@@ -7,7 +7,11 @@ interface UserStore {
     fun loadUser(id: Int): UserData?
 }
 
+data class PostData(val author: Int, val toFeeds: IntArray, val body: String)
+
 interface PostStore {
-    fun createPost(author: Int, toFeeds: IntArray, body: String): Int
+    fun createPost(data: PostData): Int
+    fun loadUserPostIds(author: Int): List<Int>
+    fun loadPost(id: Int): PostData?
 }
 

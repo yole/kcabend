@@ -1,5 +1,6 @@
 package net.freefeed.kcabend.model
 
+import net.freefeed.kcabend.persistence.PostData
 import net.freefeed.kcabend.persistence.PostStore
 import net.freefeed.kcabend.persistence.UserData
 import net.freefeed.kcabend.persistence.UserStore
@@ -36,7 +37,7 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     : Feed(feeds, id, userName, screenName, profile, private)
 {
     val subscriptions = UserIdList()
-    val posts = Timeline(feeds)
+    val posts = PostsTimeline(feeds, this)
     val homeFeed = Timeline(feeds)
 
     fun subscribeTo(targetUser: User) {
@@ -52,15 +53,21 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
 
 public class Post(val id: Int, val authorId: Int, val toFeeds: IntArray, val body: String)
 
-public class Timeline(val Feeds: Feeds) {
+public open class Timeline(val feeds: Feeds) {
     val postIds = arrayListOf<Int>()
 
     fun getPosts(requestingUser: User?): List<Post> {
-        return postIds.map { Feeds.posts.getPost(it, requestingUser) }.filterNotNull()
+        return postIds.map { feeds.posts.getPost(it, requestingUser) }.filterNotNull()
     }
 
     fun addPost(post: Post) {
         postIds.add(0, post.id)
+    }
+}
+
+public class PostsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds) {
+    init {
+        postIds.addAll(feeds.posts.loadUserPostIds(owner))
     }
 }
 
@@ -91,17 +98,25 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
     }
 }
 
-public class Posts(private val store: PostStore) {
-    private val allPosts = TreeMap<Int, Post>()
+public class Posts(private val postStore: PostStore) {
+    private val allPosts = HashMap<Int, Post>()
 
     fun createPost(author: Int, toFeeds: IntArray, body: String): Post {
-        val postId = store.createPost(author, toFeeds, body)
+        val postId = postStore.createPost(PostData(author, toFeeds, body))
         val post = Post(postId, author, toFeeds, body)
         allPosts[post.id] = post
         return post
     }
 
+    fun loadUserPostIds(author: User): List<Int> = postStore.loadUserPostIds(author.id)
+
     fun getPost(id: Int, requestingUser: User?): Post? {
-        return allPosts[id]
+        var post = allPosts[id]
+        if (post == null) {
+            val data = postStore.loadPost(id) ?: throw NotFoundException("Post", id)
+            post = Post(id, data.author, data.toFeeds, data.body)
+            allPosts[id] = post
+        }
+        return post
     }
 }
