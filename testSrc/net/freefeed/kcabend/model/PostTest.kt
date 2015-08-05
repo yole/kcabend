@@ -97,6 +97,24 @@ public class PostTest : AbstractModelTest() {
         assertEquals("Hello World", userPosts[0].body)
     }
 
+    Test public fun testPostsOfPrivateUserNotShown() {
+        val user1 = testFeeds.users.createUser("Alpha", private = true)
+        user1.publishPost("Hello World")
+
+        val user1Posts = user1.posts.getPosts(null)
+        assertEquals(0, user1Posts.size())
+    }
+
+    Test public fun testPostsOfPrivateUserShownToTheirSubscribers() {
+        val user1 = testFeeds.users.createUser("Alpha", private = true)
+        val user2 = testFeeds.users.createUser("Beta")
+        user2.subscribeTo(user1)
+        user1.publishPost("Hello World")
+
+        val user1Posts = user1.posts.getPosts(user2)
+        assertEquals(1, user1Posts.size())
+    }
+
     Ignore Test public fun testSimple() {
         val user1 = testFeeds.users.createUser("Alpha")
         val user2 = testFeeds.users.createUser("Beta")
