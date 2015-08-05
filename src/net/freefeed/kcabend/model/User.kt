@@ -20,10 +20,11 @@ public class UserIdList {
     }
 
     fun contains(id: Int): Boolean = id in ids
-
+    fun asSequence() = ids.asSequence()
+    fun size() = ids.size()
 }
 
-public open class Feed(val freefeed: Feeds,
+public open class Feed(protected val feeds: Feeds,
                        val id: Int,
                        val userName: String,
                        val screenName: String,
@@ -48,8 +49,11 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     }
 
     fun publishPost(body: String) {
-        val post = freefeed.posts.createPost(id, intArrayOf(id), body)
+        val post = feeds.posts.createPost(id, intArrayOf(id), body)
         posts.addPost(post)
+        feeds.users.forEachUser(subscribers) {
+            it.homeFeed.addPost(post)
+        }
     }
 }
 
@@ -95,6 +99,12 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
         val user = User(feeds, userId, name, name, "", private)
         allUsers[user.id] = user
         return user
+    }
+
+    fun forEachUser(userIdList: UserIdList, callback: (User) -> Unit) {
+        userIdList.asSequence().forEach {
+            callback(get(it))
+        }
     }
 }
 

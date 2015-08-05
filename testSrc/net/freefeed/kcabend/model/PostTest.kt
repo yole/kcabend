@@ -70,6 +70,16 @@ public class UserTest : AbstractModelTest() {
         val user = testFeeds.users[id]
         assertEquals("alpha", user.userName)
     }
+
+    Ignore Test public fun subscriptionsAreLoaded() {
+        val user1 = testFeeds.users.createUser("Alpha", private = true)
+        val user2 = testFeeds.users.createUser("Beta")
+        user2.subscribeTo(user1)
+
+        testFeeds = Feeds(testUserStore, testPostStore)
+        val newUser2 = testFeeds.users[user2.id]
+        assertEquals(1, newUser2.subscriptions.size())
+    }
 }
 
 public class PostTest : AbstractModelTest() {
@@ -115,7 +125,7 @@ public class PostTest : AbstractModelTest() {
         assertEquals(1, user1Posts.size())
     }
 
-    Ignore Test public fun testSimple() {
+    Test public fun testPostVisibleInSubscriberRiverOfNews() {
         val user1 = testFeeds.users.createUser("Alpha")
         val user2 = testFeeds.users.createUser("Beta")
         user2.subscribeTo(user1)
