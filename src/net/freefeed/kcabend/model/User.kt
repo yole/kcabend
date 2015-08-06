@@ -45,8 +45,8 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     : Feed(feeds, id, userName, screenName, profile, private)
 {
     val subscriptions = UserIdList()
-    val posts = PostsTimeline(feeds, this)
-    val homeFeed = Timeline(feeds)
+    val posts: Timeline by lazy { PostsTimeline(feeds, this) }
+    val homeFeed: Timeline by lazy { RiverOfNewsTimeline(feeds, this) }
 
     fun subscribeTo(targetUser: User) {
         if (targetUser.id in subscriptions) return
@@ -58,27 +58,7 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     fun publishPost(body: String) {
         val post = feeds.posts.createPost(id, intArrayOf(id), body)
         posts.addPost(post)
-        feeds.users.forEachUser(subscribers) {
-            it.homeFeed.addPost(post)
-        }
-    }
-}
-
-public open class Timeline(val feeds: Feeds) {
-    val postIds = arrayListOf<Int>()
-
-    fun getPosts(requestingUser: User?): List<Post> {
-        return postIds.map { feeds.posts.getPost(it, requestingUser) }.filterNotNull()
-    }
-
-    fun addPost(post: Post) {
-        postIds.add(0, post.id)
-    }
-}
-
-public class PostsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds) {
-    init {
-        postIds.addAll(feeds.posts.loadUserPostIds(owner))
+        subscribers.asSequence().map { feeds.users[it].homeFeed }.forEach { it.addPost(post) }
     }
 }
 

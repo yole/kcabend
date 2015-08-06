@@ -66,31 +66,12 @@ public abstract class AbstractModelTest {
         testPostStore = TestPostStore()
         testFeeds = Feeds(testUserStore, testPostStore)
     }
-}
 
-public class UserTest : AbstractModelTest() {
-    Test public fun userIsPersisted() {
-        testFeeds.users.createUser("Alpha")
-        assertEquals(1, testUserStore.users.size())
-    }
-
-    Test public fun userIsLoaded() {
-        val id = testUserStore.createUser(UserData("alpha", "Alpha", "alpha", false))
-        val user = testFeeds.users[id]
-        assertEquals("alpha", user.userName)
-    }
-
-    Test public fun subscriptionsAreLoaded() {
-        val user1 = testFeeds.users.createUser("Alpha", private = true)
-        val user2 = testFeeds.users.createUser("Beta")
-        user2.subscribeTo(user1)
-
+    protected fun reload() {
         testFeeds = Feeds(testUserStore, testPostStore)
-        val newUser2 = testFeeds.users[user2.id]
-        assertEquals(1, newUser2.subscriptions.size())
-        val newUser1 = testFeeds.users[user1.id]
-        assertEquals(1, newUser1.subscribers.size())
     }
+
+    protected fun User.reload(): User = testFeeds.users[id]
 }
 
 public class PostTest : AbstractModelTest() {
@@ -140,10 +121,23 @@ public class PostTest : AbstractModelTest() {
         val user1 = testFeeds.users.createUser("Alpha")
         val user2 = testFeeds.users.createUser("Beta")
         user2.subscribeTo(user1)
-
         user1.publishPost("Hello World")
+
         val user2Posts = user2.homeFeed.getPosts(user2)
         assertEquals(1, user2Posts.size())
         assertEquals("Hello World", user2Posts [0].body)
+    }
+
+    Test public fun riverOfNewsIsLoaded() {
+        val user1 = testFeeds.users.createUser("Alpha")
+        val user2 = testFeeds.users.createUser("Beta")
+        user2.subscribeTo(user1)
+        user1.publishPost("Hello World")
+
+        reload()
+
+        val newUser2 = user2.reload()
+        val user2Posts = newUser2.homeFeed.getPosts(newUser2)
+        assertEquals(1, user2Posts.size())
     }
 }
