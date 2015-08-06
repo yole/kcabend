@@ -29,6 +29,9 @@ public abstract class AbstractModelTest {
     fun createUsers(vararg names: String): List<User> = names.map { testFeeds.users.createUser(it) }
     fun User.readHomePosts() = homeFeed.getPosts(this)
     fun User.readOwnPosts() = posts.getPosts(this)
+
+    // Do nothing. The very fact that a timeline is passed here as a parameter ensures that it is loaded.
+    fun ensureLoaded(timeline: Timeline) {}
 }
 
 public class PostTest : AbstractModelTest() {
@@ -194,8 +197,33 @@ public class LikesTest : AbstractModelTest() {
         assertEquals(1, user3Timeline.size())
     }
 
-    Ignore Test fun subscribersTimelineShowsWhoLikedPost() {
+    Test fun subscribersTimelineShowsWhoLikedPost() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        user3.subscribeTo(user2)
+        ensureLoaded(user3.homeFeed)
+
+        val post = user1.publishPost("Hello World")
+        user2.likePost(post)
+
+        val user3Timeline = user3.readHomePosts()
+        assertEquals(user2.id, user3Timeline [0].reason?.userId)
+        assertEquals(ShowReasonAction.Like, user3Timeline [0].reason?.action)
     }
+
+    Test fun subscribersTimelineShowsWhoLikedPostAfterReload() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        user3.subscribeTo(user2)
+
+        val post = user1.publishPost("Hello World")
+        user2.likePost(post)
+
+        reload()
+
+        val user3Timeline = user3.reload().readHomePosts()
+        assertEquals(user2.id, user3Timeline [0].reason?.userId)
+        assertEquals(ShowReasonAction.Like, user3Timeline [0].reason?.action)
+    }
+
 
     Ignore Test fun likeBumpsPost() {
 

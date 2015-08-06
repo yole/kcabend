@@ -8,6 +8,13 @@ public class Post(val id: Int, val createdAt: Long, val authorId: Int, val toFee
     val likes = UserIdList()
 }
 
+enum class ShowReasonAction { Like }
+data class ShowReason(val userId: Int, val action: ShowReasonAction)
+
+public class PostView(val post: Post, val likes: UserIdList, val reason: ShowReason?) {
+    val body: String get() = post.body
+}
+
 public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
     private val allPosts = HashMap<Int, Post>()
 

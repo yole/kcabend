@@ -48,7 +48,7 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
 {
     val subscriptions = UserIdList()
     val posts: Timeline by lazy { PostsTimeline(feeds, this) }
-    val homeFeed: Timeline by lazy { RiverOfNewsTimeline(feeds, this) }
+    val homeFeed: RiverOfNewsTimeline by lazy { RiverOfNewsTimeline(feeds, this) }
     val likesTimeline: Timeline by lazy { LikesTimeline(feeds, this) }
 
     fun subscribeTo(targetUser: User) {
@@ -69,11 +69,11 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
         feeds.posts.createLike(this, post)
         post.likes.add(id)
         likesTimeline.addPost(post)
-        propagateToSubscribers(post)
+        propagateToSubscribers(post, ShowReason(id, ShowReasonAction.Like))
     }
 
-    private fun propagateToSubscribers(post: Post) {
-        subscribers.asSequence().map { feeds.users[it].homeFeed }.forEach { it.addPost(post) }
+    private fun propagateToSubscribers(post: Post, reason: ShowReason? = null) {
+        subscribers.asSequence().map { feeds.users[it].homeFeed }.forEach { it.addPost(post, reason) }
     }
 
     fun allPostIdsForSubscribers(): Set<Int> =

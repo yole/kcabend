@@ -3,8 +3,8 @@ package net.freefeed.kcabend.model
 public open class Timeline(val feeds: Feeds) {
    val postIds: MutableList<Int> = arrayListOf()
 
-    fun getPosts(requestingUser: User?): List<Post> {
-        return postIds.map { feeds.posts.getPost(it, requestingUser) }.filterNotNull()
+    fun getPosts(requestingUser: User?): List<PostView> {
+        return postIds.map { feeds.posts.getPost(it, requestingUser) }.filterNotNull().map { createView(it) }
     }
 
     fun addPost(post: Post) {
@@ -12,6 +12,10 @@ public open class Timeline(val feeds: Feeds) {
             postIds.add(0, post.id)
         }
     }
+
+    private fun createView(post: Post): PostView = PostView(post, post.likes, getReason(post))
+
+    protected open fun getReason(post: Post): ShowReason? = null
 }
 
 public class PostsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds) {
@@ -27,14 +31,40 @@ public class LikesTimeline(feeds: Feeds, val owner: User) : Timeline(feeds) {
 }
 
 public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds) {
+    private val reasons = hashMapOf<Int, ShowReason>()
+
     init {
         rebuild()
     }
 
     fun rebuild() {
         postIds.clear()
-        postIds.addAll(owner.subscriptions.asSequence().toList()
-                .flatMap { feeds.users[it].allPostIdsForSubscribers()  }
-                .sortDescendingBy { feeds.posts.getPost(it, owner)?.createdAt ?: 0 })
+        reasons.clear()
+
+        val unsortedPostIds = hashSetOf<Int>()
+        val subscriptions = owner.subscriptions.asSequence().toList().map { feeds.users[it] }
+        subscriptions.forEach {
+            unsortedPostIds.addAll(it.posts.postIds)
+        }
+        subscriptions.forEach { user ->
+            user.likesTimeline.postIds.forEach {
+                if (unsortedPostIds.add(it)) {
+                    reasons[it] = ShowReason(user.id, ShowReasonAction.Like)
+                }
+            }
+        }
+
+        postIds.addAll(unsortedPostIds.toList().sortDescendingBy { feeds.posts.getPost(it, owner)?.createdAt ?: 0 })
     }
+
+    fun addPost(post: Post, reason: ShowReason?) {
+        if (post.id !in postIds) {
+            super.addPost(post)
+            if (reason != null) {
+                reasons[post.id] = reason
+            }
+        }
+    }
+
+    override fun getReason(post: Post): ShowReason? = reasons[post.id]
 }
