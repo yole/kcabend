@@ -49,6 +49,7 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     val subscriptions = UserIdList()
     val posts: Timeline by lazy { PostsTimeline(feeds, this) }
     val homeFeed: Timeline by lazy { RiverOfNewsTimeline(feeds, this) }
+    val likesTimeline: Timeline by lazy { LikesTimeline(feeds, this) }
 
     fun subscribeTo(targetUser: User) {
         if (targetUser.id in subscriptions) return
@@ -67,10 +68,12 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     fun likePost(post: Post) {
         feeds.posts.createLike(this, post)
         post.likes.add(id)
+        likesTimeline.addPost(post)
     }
 }
 
 public class NotFoundException(val type: String, val id: Int) : Exception("Can't find $type with ID $id")
+public class ForbiddenException() : Exception("This operation is forbidden")
 
 public class Users(private val userStore: UserStore, val feeds: Feeds) {
     private var allUsers = TreeMap<Int, User>()

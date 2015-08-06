@@ -42,10 +42,13 @@ class IntMultiMap<T> {
     public fun get(id: Int): List<T>? = data[id]
 }
 
+data class PersistedLike(val postId: Int, val timestamp: Long)
+
 class TestPostStore: PostStore {
     private var lastId: Int = 1
     public val userPosts: IntMultiMap<PersistedPost> = IntMultiMap()
     public val likes: IntMultiMap<Int> = IntMultiMap()
+    private val userLikes = IntMultiMap<PersistedLike>()
     public val allPosts: MutableMap<Int, PersistedPost> = hashMapOf()
 
     override fun createPost(data: PostData): Int {
@@ -55,8 +58,9 @@ class TestPostStore: PostStore {
         return post.id
     }
 
-    override fun createLike(userId: Int, postId: Int) {
+    override fun createLike(userId: Int, postId: Int, timestamp: Long) {
         likes.put(postId, userId)
+        userLikes.put(userId, PersistedLike(postId, timestamp))
     }
 
     override fun loadUserPostIds(author: Int): List<Int> {
@@ -65,5 +69,7 @@ class TestPostStore: PostStore {
 
     override fun loadPost(postId: Int): PostData? = allPosts[postId]?.data
     override fun loadLikes(postId: Int) = likes[postId] ?: emptyList()
+    override fun loadUserLikesSortedByTimestamp(userId: Int): List<Int> =
+            userLikes[userId]?.sortDescendingBy { it.timestamp }?.map { it.postId } ?: emptyList()
 }
 

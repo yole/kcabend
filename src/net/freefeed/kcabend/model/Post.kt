@@ -20,6 +20,7 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
     }
 
     fun loadUserPostIds(author: User): List<Int> = postStore.loadUserPostIds(author.id)
+    fun loadUserLikes(author: User): List<Int> = postStore.loadUserLikesSortedByTimestamp(author.id)
 
     fun getPost(id: Int, requestingUser: User?): Post? {
         var post = allPosts[id] ?: loadPost(id)
@@ -47,6 +48,9 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
     }
 
     fun createLike(user: User, post: Post) {
-        postStore.createLike(user.id, post.id)
+        if (!isPostVisible(post, user)) {
+            throw ForbiddenException()
+        }
+        postStore.createLike(user.id, post.id, feeds.currentTime())
     }
 }

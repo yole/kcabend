@@ -20,6 +20,12 @@ public class PostsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds) {
     }
 }
 
+public class LikesTimeline(feeds: Feeds, val owner: User) : Timeline(feeds) {
+    init {
+        postIds.addAll(feeds.posts.loadUserLikes(owner))
+    }
+}
+
 public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds) {
     init {
         rebuild()

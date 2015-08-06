@@ -1,9 +1,7 @@
 package net.freefeed.kcabend.model
 
 import net.freefeed.kcabend.persistence.PostData
-import net.freefeed.kcabend.persistence.PostStore
 import net.freefeed.kcabend.persistence.UserData
-import net.freefeed.kcabend.persistence.UserStore
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Ignore
@@ -29,6 +27,8 @@ public abstract class AbstractModelTest {
     protected fun User.reload(): User = testFeeds.users[id]
 
     fun createUsers(vararg names: String): List<User> = names.map { testFeeds.users.createUser(it) }
+    fun User.readHomePosts() = homeFeed.getPosts(this)
+    fun User.readOwnPosts() = posts.getPosts(this)
 }
 
 public class PostTest : AbstractModelTest() {
@@ -114,6 +114,9 @@ public class PostTest : AbstractModelTest() {
         assertEquals("Second", user3Posts[0].body)
         assertEquals("First", user3Posts[1].body)
     }
+}
+
+public class LikesTest : AbstractModelTest() {
 
     Test fun usersCanLikePosts() {
         val (user1, user2) = createUsers("Alpha", "Beta")
@@ -135,15 +138,35 @@ public class PostTest : AbstractModelTest() {
         assertEquals(1, user1Posts[0].likes.size())
     }
 
-    Ignore Test fun usersCantLikePostsTheyCantSee() {
+    Test(expected = ForbiddenException::class) fun usersCantLikePostsTheyCantSee() {
+        val user1 = testFeeds.users.createUser("Alpha", private = true)
+        val user2 = testFeeds.users.createUser("Beta")
+        val post = user1.publishPost("Hello World")
+        user2.likePost(post)
     }
 
-    Ignore Test fun likedPostAppearsInLikesTimeline() {
+    Test fun likedPostAppearsInLikesTimeline() {
+        val (user1, user2) = createUsers("Alpha", "Beta")
+        val post = user1.publishPost("Hello World")
+        user2.likePost(post)
 
+        val user2Likes = user2.likesTimeline.getPosts(user2)
+        assertEquals(1, user2Likes.size())
     }
 
-    Ignore Test fun likesTimelineIsLoaded() {
+    Test fun likesTimelineIsLoaded() {
+        val (user1, user2) = createUsers("Alpha", "Beta")
+        val post1 = user1.publishPost("Hello World")
+        val post2 = user1.publishPost("Hello World 2")
+        user2.likePost(post1)
+        user2.likePost(post2)
 
+        reload()
+
+        val user2Likes = user2.reload().likesTimeline.getPosts(user2)
+        assertEquals(2, user2Likes.size())
+        assertEquals("Hello World 2", user2Likes[0].body)
+        assertEquals("Hello World", user2Likes[1].body)
     }
 
     Ignore Test fun likedPostAppearsInSubscribersTimeline() {
@@ -163,6 +186,4 @@ public class PostTest : AbstractModelTest() {
 
     }
 
-    fun User.readHomePosts() = homeFeed.getPosts(this)
-    fun User.readOwnPosts() = posts.getPosts(this)
 }
