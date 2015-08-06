@@ -61,7 +61,7 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     fun publishPost(body: String): Post {
         val post = feeds.posts.createPost(id, intArrayOf(id), body)
         posts.addPost(post)
-        subscribers.asSequence().map { feeds.users[it].homeFeed }.forEach { it.addPost(post) }
+        propagateToSubscribers(post)
         return post
     }
 
@@ -69,7 +69,15 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
         feeds.posts.createLike(this, post)
         post.likes.add(id)
         likesTimeline.addPost(post)
+        propagateToSubscribers(post)
     }
+
+    private fun propagateToSubscribers(post: Post) {
+        subscribers.asSequence().map { feeds.users[it].homeFeed }.forEach { it.addPost(post) }
+    }
+
+    fun allPostIdsForSubscribers(): Set<Int> =
+        posts.postIds.toHashSet() + likesTimeline.postIds.toHashSet()
 }
 
 public class NotFoundException(val type: String, val id: Int) : Exception("Can't find $type with ID $id")

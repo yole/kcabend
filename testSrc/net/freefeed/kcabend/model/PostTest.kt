@@ -114,6 +114,9 @@ public class PostTest : AbstractModelTest() {
         assertEquals("Second", user3Posts[0].body)
         assertEquals("First", user3Posts[1].body)
     }
+
+    Ignore Test public fun deletedPostDisappearsFromTimelines() {
+    }
 }
 
 public class LikesTest : AbstractModelTest() {
@@ -169,10 +172,26 @@ public class LikesTest : AbstractModelTest() {
         assertEquals("Hello World", user2Likes[1].body)
     }
 
-    Ignore Test fun likedPostAppearsInSubscribersTimeline() {
+    Test fun likedPostAppearsInSubscribersTimeline() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        user3.subscribeTo(user2)
+        val post = user1.publishPost("Hello World")
+        user2.likePost(post)
+
+        val user3Timeline = user3.readHomePosts()
+        assertEquals(1, user3Timeline.size())
     }
 
-    Ignore Test fun likedPostIsVisibleInSubscribersTimelineAfterReload() {
+    Test fun likedPostIsVisibleInSubscribersTimelineAfterReload() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        user3.subscribeTo(user2)
+        val post = user1.publishPost("Hello World")
+        user2.likePost(post)
+
+        reload()
+
+        val user3Timeline = user3.reload().readHomePosts()
+        assertEquals(1, user3Timeline.size())
     }
 
     Ignore Test fun subscribersTimelineShowsWhoLikedPost() {
