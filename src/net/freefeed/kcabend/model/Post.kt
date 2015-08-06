@@ -4,7 +4,9 @@ import net.freefeed.kcabend.persistence.PostData
 import net.freefeed.kcabend.persistence.PostStore
 import java.util.*
 
-public class Post(val id: Int, val createdAt: Long, val authorId: Int, val toFeeds: IntArray, val body: String)
+public class Post(val id: Int, val createdAt: Long, val authorId: Int, val toFeeds: IntArray, val body: String) {
+    val likes = UserIdList()
+}
 
 public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
     private val allPosts = HashMap<Int, Post>()
@@ -20,13 +22,16 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
     fun loadUserPostIds(author: User): List<Int> = postStore.loadUserPostIds(author.id)
 
     fun getPost(id: Int, requestingUser: User?): Post? {
-        var post = allPosts[id]
-        if (post == null) {
-            val data = postStore.loadPost(id) ?: throw NotFoundException("Post", id)
-            post = Post(id, data.createdAt, data.author, data.toFeeds, data.body)
-            allPosts[id] = post
-        }
+        var post = allPosts[id] ?: loadPost(id)
         return if (isPostVisible(post, requestingUser)) post else null
+    }
+
+    private fun loadPost(id: Int): Post {
+        val data = postStore.loadPost(id) ?: throw NotFoundException("Post", id)
+        val post = Post(id, data.createdAt, data.author, data.toFeeds, data.body)
+        post.likes.set(postStore.loadLikes(id))
+        allPosts[id] = post
+        return post
     }
 
     fun isPostVisible(post: Post, requestingUser: User?): Boolean {
@@ -39,5 +44,9 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
             return requestingUser != null && requestingUser.id in feed.subscribers
         }
         return true
+    }
+
+    fun createLike(user: User, post: Post) {
+        postStore.createLike(user.id, post.id)
     }
 }

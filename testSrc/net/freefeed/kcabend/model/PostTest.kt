@@ -10,52 +10,6 @@ import org.junit.Ignore
 import org.junit.Test
 import kotlin.properties.Delegates
 
-data class PersistedUser(val id: Int, val data: UserData)
-data class PersistedSubscription(val fromUser: Int, val toUser: Int)
-
-class TestUserStore : UserStore {
-    private var lastId: Int = 1
-    public val users: MutableMap<Int, PersistedUser> = hashMapOf()
-    private val subscriptions = arrayListOf<PersistedSubscription>()
-
-    override fun createUser(data: UserData): Int {
-        val user = PersistedUser(lastId++, data)
-        users[user.id] = user
-        return user.id
-    }
-
-    override fun loadUser(id: Int): UserData? = users[id]?.data
-
-    override fun createSubscription(fromUserId: Int, toUserId: Int) {
-        subscriptions.add(PersistedSubscription(fromUserId, toUserId))
-    }
-
-    override fun loadSubscriptions(id: Int) = subscriptions.filter { it.fromUser == id }.map { it.toUser }
-    override fun loadSubscribers(id: Int) = subscriptions.filter { it.toUser == id }.map { it.fromUser}
-}
-
-data class PersistedPost(val id: Int, val data: PostData)
-
-class TestPostStore: PostStore {
-    private var lastId: Int = 1
-    public val userPosts: MutableMap<Int, MutableList<PersistedPost>> = hashMapOf()
-    public val allPosts: MutableMap<Int, PersistedPost> = hashMapOf()
-
-    override fun createPost(data: PostData): Int {
-        val posts = userPosts.getOrPut(data.author) { arrayListOf() }
-        val post = PersistedPost(lastId++, data)
-        posts.add(post)
-        allPosts[post.id] = post
-        return post.id
-    }
-
-    override fun loadUserPostIds(author: Int): List<Int> {
-        return userPosts[author]?.map { it.id } ?: emptyList()
-    }
-
-    override fun loadPost(id: Int): PostData? = allPosts[id]?.data
-}
-
 public abstract class AbstractModelTest {
     var testUserStore: TestUserStore by Delegates.notNull()
     var testPostStore: TestPostStore by Delegates.notNull()
@@ -161,5 +115,54 @@ public class PostTest : AbstractModelTest() {
         assertEquals("First", user3Posts[1].body)
     }
 
+    Test fun usersCanLikePosts() {
+        val (user1, user2) = createUsers("Alpha", "Beta")
+        val post = user1.publishPost("Hello World")
+        user2.likePost(post)
+
+        val user1Posts = user1.readOwnPosts()
+        assertEquals(1, user1Posts[0].likes.size())
+    }
+
+    Test fun likesArePersisted() {
+        val (user1, user2) = createUsers("Alpha", "Beta")
+        val post = user1.publishPost("Hello World")
+        user2.likePost(post)
+
+        reload()
+
+        val user1Posts = user1.reload().readOwnPosts()
+        assertEquals(1, user1Posts[0].likes.size())
+    }
+
+    Ignore Test fun usersCantLikePostsTheyCantSee() {
+    }
+
+    Ignore Test fun likedPostAppearsInLikesTimeline() {
+
+    }
+
+    Ignore Test fun likesTimelineIsLoaded() {
+
+    }
+
+    Ignore Test fun likedPostAppearsInSubscribersTimeline() {
+    }
+
+    Ignore Test fun likedPostIsVisibleInSubscribersTimelineAfterReload() {
+    }
+
+    Ignore Test fun subscribersTimelineShowsWhoLikedPost() {
+    }
+
+    Ignore Test fun likeBumpsPost() {
+
+    }
+
+    Ignore Test fun likesOfBlockedUsersArentShown() {
+
+    }
+
     fun User.readHomePosts() = homeFeed.getPosts(this)
+    fun User.readOwnPosts() = posts.getPosts(this)
 }

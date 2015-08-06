@@ -21,7 +21,7 @@ public class UserIdList {
         ids.add(id)
     }
 
-    fun load(newIds: List<Int>) {
+    fun set(newIds: List<Int>) {
         ids.clear()
         ids.addAll(newIds)
     }
@@ -57,10 +57,16 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
         targetUser.subscribers.add(id)
     }
 
-    fun publishPost(body: String) {
+    fun publishPost(body: String): Post {
         val post = feeds.posts.createPost(id, intArrayOf(id), body)
         posts.addPost(post)
         subscribers.asSequence().map { feeds.users[it].homeFeed }.forEach { it.addPost(post) }
+        return post
+    }
+
+    fun likePost(post: Post) {
+        feeds.posts.createLike(this, post)
+        post.likes.add(id)
     }
 }
 
@@ -77,8 +83,8 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
         val data = userStore.loadUser(id)
         if (data != null) {
             val loadedUser = User(feeds, id, data.userName, data.screenName, data.profile, data.private)
-            loadedUser.subscriptions.load(userStore.loadSubscriptions(id))
-            loadedUser.subscribers.load(userStore.loadSubscribers(id))
+            loadedUser.subscriptions.set(userStore.loadSubscriptions(id))
+            loadedUser.subscribers.set(userStore.loadSubscribers(id))
             allUsers[id] = loadedUser
             return loadedUser
         }
@@ -90,12 +96,6 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
         val user = User(feeds, userId, name, name, "", private)
         allUsers[user.id] = user
         return user
-    }
-
-    fun forEachUser(userIdList: UserIdList, callback: (User) -> Unit) {
-        userIdList.asSequence().forEach {
-            callback(get(it))
-        }
     }
 
     fun createSubscription(fromUser: User, toUser: User) = userStore.createSubscription(fromUser.id, toUser.id)

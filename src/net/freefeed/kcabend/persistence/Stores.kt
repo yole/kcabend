@@ -15,7 +15,9 @@ data class PostData(val createdAt: Long, val author: Int, val toFeeds: IntArray,
 
 interface PostStore {
     fun createPost(data: PostData): Int
-    fun loadUserPostIds(author: Int): List<Int>
-    fun loadPost(id: Int): PostData?
-}
+    fun createLike(userId: Int, postId: Int)
 
+    fun loadUserPostIds(author: Int): List<Int>
+    fun loadPost(postId: Int): PostData?
+    fun loadLikes(postId: Int): List<Int>
+}

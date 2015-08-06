@@ -2,6 +2,7 @@ package net.freefeed.kcabend.model
 
 import net.freefeed.kcabend.persistence.UserData
 import org.junit.Assert
+import org.junit.Ignore
 import org.junit.Test
 
 public class UserTest : AbstractModelTest() {
@@ -27,6 +28,9 @@ public class UserTest : AbstractModelTest() {
         Assert.assertEquals(1, newUser2.subscriptions.size())
         val newUser1 = testFeeds.users[user1.id]
         Assert.assertEquals(1, newUser1.subscribers.size())
+    }
+
+    Ignore Test public fun usersCanBeBlocked() {
     }
 }
 
