@@ -11,10 +11,12 @@ import org.junit.Test
 import kotlin.properties.Delegates
 
 data class PersistedUser(val id: Int, val data: UserData)
+data class PersistedSubscription(val fromUser: Int, val toUser: Int)
 
 class TestUserStore : UserStore {
     private var lastId: Int = 1
     public val users: MutableMap<Int, PersistedUser> = hashMapOf()
+    private val subscriptions = arrayListOf<PersistedSubscription>()
 
     override fun createUser(data: UserData): Int {
         val user = PersistedUser(lastId++, data)
@@ -23,6 +25,13 @@ class TestUserStore : UserStore {
     }
 
     override fun loadUser(id: Int): UserData? = users[id]?.data
+
+    override fun createSubscription(fromUserId: Int, toUserId: Int) {
+        subscriptions.add(PersistedSubscription(fromUserId, toUserId))
+    }
+
+    override fun loadSubscriptions(id: Int) = subscriptions.filter { it.fromUser == id }.map { it.toUser }
+    override fun loadSubscribers(id: Int) = subscriptions.filter { it.toUser == id }.map { it.fromUser}
 }
 
 data class PersistedPost(val id: Int, val data: PostData)
@@ -71,7 +80,7 @@ public class UserTest : AbstractModelTest() {
         assertEquals("alpha", user.userName)
     }
 
-    Ignore Test public fun subscriptionsAreLoaded() {
+    Test public fun subscriptionsAreLoaded() {
         val user1 = testFeeds.users.createUser("Alpha", private = true)
         val user2 = testFeeds.users.createUser("Beta")
         user2.subscribeTo(user1)
@@ -79,6 +88,8 @@ public class UserTest : AbstractModelTest() {
         testFeeds = Feeds(testUserStore, testPostStore)
         val newUser2 = testFeeds.users[user2.id]
         assertEquals(1, newUser2.subscriptions.size())
+        val newUser1 = testFeeds.users[user1.id]
+        assertEquals(1, newUser1.subscribers.size())
     }
 }
 

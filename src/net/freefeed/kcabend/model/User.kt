@@ -19,6 +19,11 @@ public class UserIdList {
         ids.add(id)
     }
 
+    fun load(newIds: List<Int>) {
+        ids.clear()
+        ids.addAll(newIds)
+    }
+
     fun contains(id: Int): Boolean = id in ids
     fun asSequence() = ids.asSequence()
     fun size() = ids.size()
@@ -44,6 +49,8 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     val homeFeed = Timeline(feeds)
 
     fun subscribeTo(targetUser: User) {
+        if (targetUser.id in subscriptions) return
+        feeds.users.createSubscription(this, targetUser)
         subscriptions.add(targetUser.id)
         targetUser.subscribers.add(id)
     }
@@ -88,6 +95,8 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
         val data = userStore.loadUser(id)
         if (data != null) {
             val loadedUser = User(feeds, id, data.userName, data.screenName, data.profile, data.private)
+            loadedUser.subscriptions.load(userStore.loadSubscriptions(id))
+            loadedUser.subscribers.load(userStore.loadSubscribers(id))
             allUsers[id] = loadedUser
             return loadedUser
         }
@@ -106,5 +115,7 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
             callback(get(it))
         }
     }
+
+    fun createSubscription(fromUser: User, toUser: User) = userStore.createSubscription(fromUser.id, toUser.id)
 }
 
