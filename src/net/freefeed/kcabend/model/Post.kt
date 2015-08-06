@@ -4,14 +4,15 @@ import net.freefeed.kcabend.persistence.PostData
 import net.freefeed.kcabend.persistence.PostStore
 import java.util.*
 
-public class Post(val id: Int, val authorId: Int, val toFeeds: IntArray, val body: String)
+public class Post(val id: Int, val createdAt: Long, val authorId: Int, val toFeeds: IntArray, val body: String)
 
 public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
     private val allPosts = HashMap<Int, Post>()
 
     fun createPost(author: Int, toFeeds: IntArray, body: String): Post {
-        val postId = postStore.createPost(PostData(author, toFeeds, body))
-        val post = Post(postId, author, toFeeds, body)
+        val createdAt = feeds.currentTime()
+        val postId = postStore.createPost(PostData(createdAt, author, toFeeds, body))
+        val post = Post(postId, createdAt, author, toFeeds, body)
         allPosts[post.id] = post
         return post
     }
@@ -22,7 +23,7 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
         var post = allPosts[id]
         if (post == null) {
             val data = postStore.loadPost(id) ?: throw NotFoundException("Post", id)
-            post = Post(id, data.author, data.toFeeds, data.body)
+            post = Post(id, data.createdAt, data.author, data.toFeeds, data.body)
             allPosts[id] = post
         }
         return if (isPostVisible(post, requestingUser)) post else null

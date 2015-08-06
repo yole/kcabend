@@ -11,7 +11,7 @@ interface UserStore {
     fun loadSubscribers(id: Int): List<Int>
 }
 
-data class PostData(val author: Int, val toFeeds: IntArray, val body: String)
+data class PostData(val createdAt: Long, val author: Int, val toFeeds: IntArray, val body: String)
 
 interface PostStore {
     fun createPost(data: PostData): Int

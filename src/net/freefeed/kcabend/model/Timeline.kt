@@ -27,8 +27,8 @@ public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds
 
     fun rebuild() {
         postIds.clear()
-        feeds.users.forEachUser(owner.subscriptions) {
-            postIds.addAll(it.posts.postIds)
-        }
+        postIds.addAll(owner.subscriptions.asSequence().toList()
+                .flatMap { feeds.users[it].posts.postIds  }
+                .sortDescendingBy { feeds.posts.getPost(it, owner)?.createdAt ?: 0 })
     }
 }

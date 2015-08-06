@@ -6,7 +6,9 @@ import net.freefeed.kcabend.persistence.UserStore
 import java.util.TreeMap
 import java.util.TreeSet
 
-class Feeds(userStore: UserStore, postStore: PostStore) {
+class Feeds(userStore:
+            UserStore, postStore: PostStore,
+            val currentTime: () -> Long = { System.currentTimeMillis() }) {
     val posts = Posts(postStore, this)
     val users = Users(userStore, this)
 

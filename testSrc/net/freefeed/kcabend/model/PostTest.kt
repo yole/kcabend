@@ -60,18 +60,21 @@ public abstract class AbstractModelTest {
     var testUserStore: TestUserStore by Delegates.notNull()
     var testPostStore: TestPostStore by Delegates.notNull()
     var testFeeds: Feeds by Delegates.notNull()
+    var currentTime: Long = 1
 
     Before fun setUp() {
         testUserStore = TestUserStore()
         testPostStore = TestPostStore()
-        testFeeds = Feeds(testUserStore, testPostStore)
+        reload()
     }
 
     protected fun reload() {
-        testFeeds = Feeds(testUserStore, testPostStore)
+        testFeeds = Feeds(testUserStore, testPostStore, { currentTime++ })
     }
 
     protected fun User.reload(): User = testFeeds.users[id]
+
+    fun createUsers(vararg names: String): List<User> = names.map { testFeeds.users.createUser(it) }
 }
 
 public class PostTest : AbstractModelTest() {
@@ -92,7 +95,7 @@ public class PostTest : AbstractModelTest() {
 
     Test public fun testPostsAreLoaded() {
         val userId = testUserStore.createUser(UserData("alpha", "Alpha", "alpha", false))
-        val postId = testPostStore.createPost(PostData(userId, intArrayOf(userId), "Hello World"))
+        val postId = testPostStore.createPost(PostData(testFeeds.currentTime(), userId, intArrayOf(userId), "Hello World"))
 
         val user = testFeeds.users[userId]
         val userPosts = user.posts.getPosts(null)
@@ -140,4 +143,23 @@ public class PostTest : AbstractModelTest() {
         val user2Posts = newUser2.homeFeed.getPosts(newUser2)
         assertEquals(1, user2Posts.size())
     }
+
+    Test public fun postsAreSortedByTimestamp() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        user3.subscribeTo(user1)
+        user3.subscribeTo(user2)
+
+        user1.publishPost("First")
+        user2.publishPost("Second")
+
+        reload()
+
+        val newUser3 = user3.reload()
+        val user3Posts = newUser3.readHomePosts()
+        assertEquals(2, user3Posts.size())
+        assertEquals("Second", user3Posts[0].body)
+        assertEquals("First", user3Posts[1].body)
+    }
+
+    fun User.readHomePosts() = homeFeed.getPosts(this)
 }
