@@ -236,6 +236,17 @@ public class LikesTest : AbstractModelTest() {
         assertEquals(1, user3Timeline.size())
     }
 
+    Test fun likedPostDisappearsFromSubscribersTimelineAfterDeletion() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        user3.subscribeTo(user2)
+        val post = user1.publishPost("Hello World")
+        user2.likePost(post)
+        assertEquals(1, user3.homeFeed.postCount)
+
+        user1.deletePost(post)
+        assertEquals(0, user3.homeFeed.postCount)
+    }
+
     Test fun subscribersTimelineShowsWhoLikedPost() {
         val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
         user3.subscribeTo(user2)

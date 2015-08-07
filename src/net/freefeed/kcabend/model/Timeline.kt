@@ -3,6 +3,8 @@ package net.freefeed.kcabend.model
 public open class Timeline(val feeds: Feeds) {
    val postIds: MutableList<Int> = arrayListOf()
 
+    public val postCount: Int get() = postIds.size()
+
     fun getPosts(requestingUser: User?): List<PostView> {
         return postIds.map { feeds.posts.getPost(it, requestingUser) }.filterNotNull().map { createView(it) }
     }

@@ -69,14 +69,14 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     fun publishPost(body: String): Post {
         val post = feeds.posts.createPost(id, intArrayOf(id), body)
         ownPosts.addPost(post)
-        propagateToSubscribers { it.addPost(post) }
+        propagateToSubscribers { it.homeFeed.addPost(post) }
         return post
     }
 
     fun deletePost(post: Post) {
         feeds.posts.deletePost(post, this)
         ownPosts.removePost(post)
-        propagateToSubscribers { it.removePost(post) }
+        propagateToThoseWhoSeePost(post) { it.homeFeed.removePost(post) }
     }
 
     fun likePost(post: Post) {
@@ -84,21 +84,25 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
         post.likes.add(id)
         feeds.posts.updatePost(post)
         likesTimeline.addPost(post)
-        propagateToSubscribers { it.addPost(post, ShowReason(id, ShowReasonAction.Like)) }
+        propagateToSubscribers { it.homeFeed.addPost(post, ShowReason(id, ShowReasonAction.Like)) }
         bumpPostInAllTimelines(post)
     }
 
-    private fun propagateToSubscribers(callback: (RiverOfNewsTimeline) -> Unit) {
-        subscribers.asSequence().map { feeds.users[it].homeFeed }.forEach { callback(it) }
+    private fun propagateToSubscribers(callback: (User) -> Unit) {
+        subscribers.asSequence().map { feeds.users[it] }.forEach { callback(it) }
     }
 
-    private fun bumpPostInAllTimelines(post: Post) {
+    private fun propagateToThoseWhoSeePost(post: Post, callback: (User) -> Unit) {
         val author = feeds.users[post.authorId]
         val likers = feeds.users.getAll(post.likes)
         val allSeeds = setOf(author) + likers.toSet()
         val allRecipientIds = allSeeds.flatMapTo(hashSetOf()) { it.subscribers.ids }
         val allRecipients = feeds.users.getAll(allRecipientIds)
-        allRecipients.forEach {
+        allRecipients.forEach(callback)
+    }
+
+    private fun bumpPostInAllTimelines(post: Post) {
+        propagateToThoseWhoSeePost(post) {
             if (id in it.subscriptions) {
                 it.homeFeed.bumpPost(post)
             }
