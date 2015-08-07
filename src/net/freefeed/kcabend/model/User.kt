@@ -47,7 +47,7 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     : Feed(feeds, id, userName, screenName, profile, private)
 {
     val subscriptions = UserIdList()
-    val posts: Timeline by lazy { PostsTimeline(feeds, this) }
+    val ownPosts: Timeline by lazy { PostsTimeline(feeds, this) }
     val homeFeed: RiverOfNewsTimeline by lazy { RiverOfNewsTimeline(feeds, this) }
     val likesTimeline: Timeline by lazy { LikesTimeline(feeds, this) }
 
@@ -60,7 +60,7 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
 
     fun publishPost(body: String): Post {
         val post = feeds.posts.createPost(id, intArrayOf(id), body)
-        posts.addPost(post)
+        ownPosts.addPost(post)
         propagateToSubscribers(post)
         return post
     }
@@ -68,16 +68,28 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     fun likePost(post: Post) {
         feeds.posts.createLike(this, post)
         post.likes.add(id)
+        feeds.posts.updatePost(post)
         likesTimeline.addPost(post)
         propagateToSubscribers(post, ShowReason(id, ShowReasonAction.Like))
+        bumpPostInAllTimelines(post)
     }
 
     private fun propagateToSubscribers(post: Post, reason: ShowReason? = null) {
         subscribers.asSequence().map { feeds.users[it].homeFeed }.forEach { it.addPost(post, reason) }
     }
 
-    fun allPostIdsForSubscribers(): Set<Int> =
-        posts.postIds.toHashSet() + likesTimeline.postIds.toHashSet()
+    private fun bumpPostInAllTimelines(post: Post) {
+        val author = feeds.users[post.authorId]
+        val likers = feeds.users.getAll(post.likes)
+        val allSeeds = setOf(author) + likers.toSet()
+        val allRecipientIds = allSeeds.flatMapTo(hashSetOf()) { it.subscribers.ids }
+        val allRecipients = feeds.users.getAll(allRecipientIds)
+        allRecipients.forEach {
+            if (id in it.subscriptions) {
+                it.homeFeed.bumpPost(post)
+            }
+        }
+    }
 }
 
 public class NotFoundException(val type: String, val id: Int) : Exception("Can't find $type with ID $id")
@@ -102,6 +114,9 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
         throw NotFoundException("User", id)
     }
 
+    fun getAll(userIdList: UserIdList): List<User> = userIdList.ids.map { get(it) }
+    fun getAll(userIdList: Collection<Int>): List<User> = userIdList.map { get(it) }
+
     fun createUser(name: String, private: Boolean = false): User {
         val userId = userStore.createUser(UserData(name, name, "", private))
         val user = User(feeds, userId, name, name, "", private)
@@ -111,4 +126,3 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
 
     fun createSubscription(fromUser: User, toUser: User) = userStore.createSubscription(fromUser.id, toUser.id)
 }
-

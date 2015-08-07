@@ -11,10 +11,11 @@ interface UserStore {
     fun loadSubscribers(id: Int): List<Int>
 }
 
-data class PostData(val createdAt: Long, val author: Int, val toFeeds: IntArray, val body: String)
+data class PostData(val createdAt: Long, var updatedAt: Long, val author: Int, val toFeeds: IntArray, val body: String)
 
 interface PostStore {
     fun createPost(data: PostData): Int
+    fun updatePost(id: Int, data: PostData)
     fun createLike(userId: Int, postId: Int, timestamp: Long)
 
     fun loadUserPostIds(author: Int): List<Int>

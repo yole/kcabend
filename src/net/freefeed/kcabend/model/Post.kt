@@ -2,9 +2,11 @@ package net.freefeed.kcabend.model
 
 import net.freefeed.kcabend.persistence.PostData
 import net.freefeed.kcabend.persistence.PostStore
-import java.util.*
+import java.util.HashMap
 
-public class Post(val id: Int, val createdAt: Long, val authorId: Int, val toFeeds: IntArray, val body: String) {
+public class Post(val id: Int, val data: PostData) {
+    val authorId: Int get() = data.author
+    val updatedAt: Long get() = data.updatedAt
     val likes = UserIdList()
 }
 
@@ -12,7 +14,7 @@ enum class ShowReasonAction { Like }
 data class ShowReason(val userId: Int, val action: ShowReasonAction)
 
 public class PostView(val post: Post, val likes: UserIdList, val reason: ShowReason?) {
-    val body: String get() = post.body
+    val body: String get() = post.data.body
 }
 
 public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
@@ -20,10 +22,16 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
 
     fun createPost(author: Int, toFeeds: IntArray, body: String): Post {
         val createdAt = feeds.currentTime()
-        val postId = postStore.createPost(PostData(createdAt, author, toFeeds, body))
-        val post = Post(postId, createdAt, author, toFeeds, body)
+        val postData = PostData(createdAt, createdAt, author, toFeeds, body)
+        val postId = postStore.createPost(postData)
+        val post = Post(postId, postData)
         allPosts[post.id] = post
         return post
+    }
+
+    fun updatePost(post: Post) {
+        post.data.updatedAt = feeds.currentTime()
+        postStore.updatePost(post.id, post.data)
     }
 
     fun loadUserPostIds(author: User): List<Int> = postStore.loadUserPostIds(author.id)
@@ -36,14 +44,14 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
 
     private fun loadPost(id: Int): Post {
         val data = postStore.loadPost(id) ?: throw NotFoundException("Post", id)
-        val post = Post(id, data.createdAt, data.author, data.toFeeds, data.body)
+        val post = Post(id, data)
         post.likes.set(postStore.loadLikes(id))
         allPosts[id] = post
         return post
     }
 
     fun isPostVisible(post: Post, requestingUser: User?): Boolean {
-        val toFeeds = post.toFeeds.map { feeds.users.get(it) }
+        val toFeeds = post.data.toFeeds.map { feeds.users.get(it) }
         return toFeeds.any { isFeedVisible(it, requestingUser) }
     }
 

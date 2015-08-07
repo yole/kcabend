@@ -13,6 +13,14 @@ public open class Timeline(val feeds: Feeds) {
         }
     }
 
+    fun bumpPost(post: Post) {
+        val index = postIds.indexOf(post.id)
+        if (index >= 0) {
+            postIds.remove(index)
+            postIds.add(0, post.id)
+        }
+    }
+
     private fun createView(post: Post): PostView = PostView(post, post.likes, getReason(post))
 
     protected open fun getReason(post: Post): ShowReason? = null
@@ -42,9 +50,9 @@ public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds
         reasons.clear()
 
         val unsortedPostIds = hashSetOf<Int>()
-        val subscriptions = owner.subscriptions.asSequence().toList().map { feeds.users[it] }
+        val subscriptions = owner.subscriptions.ids.map { feeds.users[it] }
         subscriptions.forEach {
-            unsortedPostIds.addAll(it.posts.postIds)
+            unsortedPostIds.addAll(it.ownPosts.postIds)
         }
         subscriptions.forEach { user ->
             user.likesTimeline.postIds.forEach {
@@ -54,7 +62,7 @@ public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds
             }
         }
 
-        postIds.addAll(unsortedPostIds.toList().sortDescendingBy { feeds.posts.getPost(it, owner)?.createdAt ?: 0 })
+        postIds.addAll(unsortedPostIds.toList().sortDescendingBy { feeds.posts.getPost(it, owner)?.updatedAt ?: 0 })
     }
 
     fun addPost(post: Post, reason: ShowReason?) {

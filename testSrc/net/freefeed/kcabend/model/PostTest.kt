@@ -28,7 +28,7 @@ public abstract class AbstractModelTest {
 
     fun createUsers(vararg names: String): List<User> = names.map { testFeeds.users.createUser(it) }
     fun User.readHomePosts() = homeFeed.getPosts(this)
-    fun User.readOwnPosts() = posts.getPosts(this)
+    fun User.readOwnPosts() = ownPosts.getPosts(this)
 
     // Do nothing. The very fact that a timeline is passed here as a parameter ensures that it is loaded.
     fun ensureLoaded(timeline: Timeline) {}
@@ -39,7 +39,7 @@ public class PostTest : AbstractModelTest() {
         val user1 = testFeeds.users.createUser("Alpha")
         user1.publishPost("Hello World")
 
-        val user1Posts = user1.posts.getPosts(null)
+        val user1Posts = user1.ownPosts.getPosts(null)
         assertEquals(1, user1Posts.size())
         assertEquals("Hello World", user1Posts[0].body)
     }
@@ -52,10 +52,11 @@ public class PostTest : AbstractModelTest() {
 
     Test public fun testPostsAreLoaded() {
         val userId = testUserStore.createUser(UserData("alpha", "Alpha", "alpha", false))
-        val postId = testPostStore.createPost(PostData(testFeeds.currentTime(), userId, intArrayOf(userId), "Hello World"))
+        val createdAt = testFeeds.currentTime()
+        val postId = testPostStore.createPost(PostData(createdAt, createdAt, userId, intArrayOf(userId), "Hello World"))
 
         val user = testFeeds.users[userId]
-        val userPosts = user.posts.getPosts(null)
+        val userPosts = user.ownPosts.getPosts(null)
         assertEquals("Hello World", userPosts[0].body)
     }
 
@@ -63,7 +64,7 @@ public class PostTest : AbstractModelTest() {
         val user1 = testFeeds.users.createUser("Alpha", private = true)
         user1.publishPost("Hello World")
 
-        val user1Posts = user1.posts.getPosts(null)
+        val user1Posts = user1.ownPosts.getPosts(null)
         assertEquals(0, user1Posts.size())
     }
 
@@ -73,7 +74,7 @@ public class PostTest : AbstractModelTest() {
         user2.subscribeTo(user1)
         user1.publishPost("Hello World")
 
-        val user1Posts = user1.posts.getPosts(user2)
+        val user1Posts = user1.ownPosts.getPosts(user2)
         assertEquals(1, user1Posts.size())
     }
 
@@ -224,8 +225,40 @@ public class LikesTest : AbstractModelTest() {
         assertEquals(ShowReasonAction.Like, user3Timeline [0].reason?.action)
     }
 
+    Test fun likeBumpsPost() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        user2.subscribeTo(user1)
+        user2.subscribeTo(user3)
 
-    Ignore Test fun likeBumpsPost() {
+        val post1 = user1.publishPost("Hello World")
+        val post2 = user1.publishPost("Hello World Two")
+
+        var user2Timeline = user2.readHomePosts()
+        assertEquals("Hello World Two", user2Timeline[0].body)
+        assertEquals("Hello World", user2Timeline[1].body)
+
+        user3.likePost(post1)
+
+        user2Timeline = user2.readHomePosts()
+        assertEquals("Hello World", user2Timeline[0].body)
+        assertEquals("Hello World Two", user2Timeline[1].body)
+    }
+
+    Test fun likeBumpsPostAfterReload() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        user2.subscribeTo(user1)
+        user2.subscribeTo(user3)
+
+        val post1 = user1.publishPost("Hello World")
+        val post2 = user1.publishPost("Hello World Two")
+
+        user3.likePost(post1)
+
+        reload()
+
+        val user2Timeline = user2.reload().readHomePosts()
+        assertEquals("Hello World", user2Timeline[0].body)
+        assertEquals("Hello World Two", user2Timeline[1].body)
 
     }
 
