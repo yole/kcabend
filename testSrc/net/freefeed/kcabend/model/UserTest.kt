@@ -2,7 +2,6 @@ package net.freefeed.kcabend.model
 
 import net.freefeed.kcabend.persistence.UserData
 import org.junit.Assert.assertEquals
-import org.junit.Ignore
 import org.junit.Test
 
 public class UserTest : AbstractModelTest() {
@@ -42,7 +41,37 @@ public class UserTest : AbstractModelTest() {
         assertEquals(0, user1.reload().subscribers.size())
     }
 
-    Ignore Test public fun usersCanBeBlocked() {
+    Test public fun usersCanBeBlocked() {
+        val (user1, user2) = createUsers("Alpha", "Beta")
+        user2.subscribeTo(user1)
+
+        user1.blockUser(user2)
+
+        assertEquals(1, user1.blockedUsers.size())
+        assertEquals(0, user2.subscriptions.size())
+
+        reload()
+
+        assertEquals(1, user1.blockedUsers.size())
+    }
+
+    Test(expected = ForbiddenException::class) public fun blockedUserCantSubscribe() {
+        val (user1, user2) = createUsers("Alpha", "Beta")
+
+        user1.blockUser(user2)
+        user2.subscribeTo(user1)
+    }
+
+    Test public fun usersCanBeUnblocked() {
+        val (user1, user2) = createUsers("Alpha", "Beta")
+
+        user1.blockUser(user2)
+        user1.unblockUser(user2)
+
+        assertEquals(0, user1.blockedUsers.size())
+
+        reload()
+
+        assertEquals(0, user1.blockedUsers.size())
     }
 }
-

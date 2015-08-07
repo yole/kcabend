@@ -4,7 +4,6 @@ import net.freefeed.kcabend.persistence.PostData
 import net.freefeed.kcabend.persistence.UserData
 import org.junit.Assert.assertEquals
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Test
 import kotlin.properties.Delegates
 
@@ -158,6 +157,28 @@ public class PostTest : AbstractModelTest() {
         val (user1, user2) = createUsers("Alpha", "Beta")
         val post = user1.publishPost("Foo")
         user2.deletePost(post)
+    }
+
+    Test public fun postsOfBlockedUserAreNotShown() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        user3.subscribeTo(user2)
+        user3.blockUser(user1)
+        val post = user1.publishPost("Hello World")
+        user2.likePost(post)
+
+        val likesSeenByUser3 = user2.likesTimeline.getPosts(user3)
+        assertEquals(0, likesSeenByUser3.size())
+    }
+
+    Test public fun postsOfBlockingUserAreNotShown() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        user3.subscribeTo(user2)
+        user1.blockUser(user3)
+        val post = user1.publishPost("Hello World")
+        user2.likePost(post)
+
+        val likesSeenByUser3 = user2.likesTimeline.getPosts(user3)
+        assertEquals(0, likesSeenByUser3.size())
     }
 }
 
@@ -356,8 +377,14 @@ public class LikesTest : AbstractModelTest() {
         assertEquals(ShowReasonAction.Like, user3HomePosts [0].reason?.action)
     }
 
-    Ignore Test fun likesOfBlockedUsersArentShown() {
+    Test fun likesOfBlockedUsersArentShown() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        user3.subscribeTo(user2)
+        user1.blockUser(user3)
+        val post = user2.publishPost("Hello World")
+        user1.likePost(post)
 
+        val posts = user3.readHomePosts()
+        assertEquals(0, posts[0].likes.size())
     }
-
 }

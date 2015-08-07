@@ -59,6 +59,13 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
     }
 
     fun isPostVisible(post: Post, requestingUser: User?): Boolean {
+        if (requestingUser != null) {
+            val author = feeds.users[post.authorId]
+            if (author.id in requestingUser.blockedUsers || requestingUser.id in author.blockedUsers) {
+                return false
+            }
+        }
+
         val toFeeds = post.data.toFeeds.map { feeds.users.get(it) }
         return toFeeds.any { isFeedVisible(it, requestingUser) }
     }

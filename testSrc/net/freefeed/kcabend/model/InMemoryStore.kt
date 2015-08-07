@@ -6,13 +6,16 @@ import net.freefeed.kcabend.persistence.UserData
 import net.freefeed.kcabend.persistence.UserStore
 
 data class PersistedUser(val id: Int, val data: UserData)
-data class PersistedSubscription(val fromUser: Int, val toUser: Int)
+data class PersistedUserPair(val fromUser: Int, val toUser: Int)
+
+fun List<PersistedUserPair>.loadToUsers(fromUser: Int): List<Int> = filter { it.fromUser == fromUser }.map { it.toUser }
 
 class TestUserStore : UserStore {
     public var disposed: Boolean = false
     private var lastId: Int = 1
     public val users: MutableMap<Int, PersistedUser> = hashMapOf()
-    private val subscriptions = arrayListOf<PersistedSubscription>()
+    private val subscriptions = arrayListOf<PersistedUserPair>()
+    private val blocks = arrayListOf<PersistedUserPair>()
 
     override fun createUser(data: UserData): Int {
         val user = PersistedUser(lastId++, data)
@@ -23,15 +26,24 @@ class TestUserStore : UserStore {
     override fun loadUser(id: Int): UserData? = users[id]?.data
 
     override fun createSubscription(fromUserId: Int, toUserId: Int) {
-        subscriptions.add(PersistedSubscription(fromUserId, toUserId))
+        subscriptions.add(PersistedUserPair(fromUserId, toUserId))
     }
 
     override fun removeSubscription(fromUserId: Int, toUserId: Int) {
-        subscriptions.remove(PersistedSubscription(fromUserId, toUserId))
+        subscriptions.remove(PersistedUserPair(fromUserId, toUserId))
     }
 
-    override fun loadSubscriptions(id: Int) = subscriptions.filter { it.fromUser == id }.map { it.toUser }
+    override fun createBlock(fromUserId: Int, toUserId: Int) {
+        blocks.add(PersistedUserPair(fromUserId, toUserId))
+    }
+
+    override fun removeBlock(fromUserId: Int, toUserId: Int) {
+        blocks.remove(PersistedUserPair(fromUserId, toUserId))
+    }
+
+    override fun loadSubscriptions(id: Int) = subscriptions.loadToUsers(id)
     override fun loadSubscribers(id: Int) = subscriptions.filter { it.toUser == id }.map { it.fromUser}
+    override fun loadBlocks(id: Int) = blocks.loadToUsers(id)
 }
 
 data class PersistedPost(val id: Int, val data: PostData)

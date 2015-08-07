@@ -4,12 +4,17 @@ data class UserData(val userName: String, val screenName: String, val profile: S
 
 interface UserStore {
     fun createUser(data: UserData): Int
+
     fun createSubscription(fromUserId: Int, toUserId: Int)
     fun removeSubscription(fromUserId: Int, toUserId: Int)
+
+    fun createBlock(fromUserId: Int, toUserId: Int)
+    fun removeBlock(fromUserId: Int, toUserId: Int)
 
     fun loadUser(id: Int): UserData?
     fun loadSubscriptions(id: Int): List<Int>
     fun loadSubscribers(id: Int): List<Int>
+    fun loadBlocks(id: Int): List<Int>
 }
 
 data class PostData(val createdAt: Long, var updatedAt: Long, val author: Int, val toFeeds: IntArray, val body: String)

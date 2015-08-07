@@ -14,8 +14,12 @@ class Feeds(userStore:
 
 }
 
-public class UserIdList {
+public class UserIdList() {
     val ids = TreeSet<Int>()
+
+    constructor(idList: Collection<Int>): this() {
+        ids.addAll(idList)
+    }
 
     fun add(id: Int) = ids.add(id)
     fun remove(id: Int) = ids.remove(id)
@@ -26,7 +30,6 @@ public class UserIdList {
     }
 
     fun contains(id: Int): Boolean = id in ids
-    fun asSequence() = ids.asSequence()
     fun size() = ids.size()
 }
 
@@ -46,12 +49,18 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     : Feed(feeds, id, userName, screenName, profile, private)
 {
     val subscriptions = UserIdList()
+    val blockedUsers = UserIdList()
+
     val ownPosts: Timeline by lazy { PostsTimeline(feeds, this) }
     val homeFeed: RiverOfNewsTimeline by lazy { RiverOfNewsTimeline(feeds, this) }
     val likesTimeline: Timeline by lazy { LikesTimeline(feeds, this) }
 
     fun subscribeTo(targetFeed: Feed) {
+        if (targetFeed.id in blockedUsers || (targetFeed is User && id in targetFeed.blockedUsers)) {
+            throw ForbiddenException()
+        }
         if (targetFeed.id in subscriptions) return
+
         feeds.users.createSubscription(this, targetFeed)
         subscriptions.add(targetFeed.id)
         targetFeed.subscribers.add(id)
@@ -64,6 +73,31 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
         subscriptions.remove(targetFeed.id)
         targetFeed.subscribers.remove(id)
         homeFeed.rebuild()
+    }
+
+    fun blockUser(targetUser: User) {
+        if (targetUser.id in blockedUsers) return
+
+        unsubscribeFrom(targetUser)
+        targetUser.unsubscribeFrom(this)
+
+        blockedUsers.add(targetUser.id)
+
+        feeds.users.createBlock(this, targetUser)
+
+        homeFeed.rebuild()
+        targetUser.homeFeed.rebuild()
+    }
+
+    fun unblockUser(targetUser: User) {
+        if (targetUser.id !in blockedUsers) return
+
+        blockedUsers.remove(targetUser.id)
+
+        feeds.users.removeBlock(this, targetUser)
+
+        homeFeed.rebuild()
+        targetUser.homeFeed.rebuild()
     }
 
     fun publishPost(body: String): Post {
@@ -104,7 +138,7 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     }
 
     private fun propagateToSubscribers(callback: (User) -> Unit) {
-        subscribers.asSequence().map { feeds.users[it] }.forEach { callback(it) }
+        subscribers.ids.map { feeds.users[it] }.forEach { callback(it) }
     }
 
     private fun getUsersWhoSeePost(post: Post): Collection<User> {
@@ -127,7 +161,7 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
         if (post.authorId in subscriptions) {
             return ShowReason(post.authorId, ShowReasonAction.Subscription)
         }
-        for (liker in post.likes.asSequence()) {
+        for (liker in post.likes.ids) {
             if (liker in subscriptions) {
                 return ShowReason(liker, ShowReasonAction.Like)
             }
@@ -152,6 +186,7 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
             val loadedUser = User(feeds, id, data.userName, data.screenName, data.profile, data.private)
             loadedUser.subscriptions.set(userStore.loadSubscriptions(id))
             loadedUser.subscribers.set(userStore.loadSubscribers(id))
+            loadedUser.blockedUsers.set(userStore.loadBlocks(id))
             allUsers[id] = loadedUser
             return loadedUser
         }
@@ -167,6 +202,10 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
         allUsers[user.id] = user
         return user
     }
+
     fun createSubscription(fromUser: User, toUser: Feed) = userStore.createSubscription(fromUser.id, toUser.id)
     fun removeSubscription(fromUser: User, toUser: Feed) = userStore.removeSubscription(fromUser.id, toUser.id)
+
+    fun createBlock(fromUser: User, toUser: User) = userStore.createBlock(fromUser.id, toUser.id)
+    fun removeBlock(fromUser: User, toUser: User) = userStore.removeBlock(fromUser.id, toUser.id)
 }
