@@ -30,9 +30,9 @@ public open class Timeline(val feeds: Feeds) {
         }
     }
 
-    private fun createView(post: Post): PostView = PostView(post, post.likes, getReason(post))
+    private fun createView(post: Post): PostView = PostView(post, post.likes, getShowReason(post))
 
-    protected open fun getReason(post: Post): ShowReason? = null
+    protected open fun getShowReason(post: Post): ShowReason? = null
 }
 
 public class PostsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds) {
@@ -83,5 +83,9 @@ public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds
         }
     }
 
-    override fun getReason(post: Post): ShowReason? = reasons[post.id]
+    override fun getShowReason(post: Post): ShowReason? = reasons[post.id]
+
+    fun updateShowReason(post: Post, reasonToSee: ShowReason) {
+        reasons[post.id] = reasonToSee
+    }
 }

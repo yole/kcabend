@@ -10,7 +10,7 @@ public class Post(val id: Int, val data: PostData) {
     val likes = UserIdList()
 }
 
-enum class ShowReasonAction { Like }
+enum class ShowReasonAction { Subscription, Like }
 data class ShowReason(val userId: Int, val action: ShowReasonAction)
 
 public class PostView(val post: Post, val likes: UserIdList, val reason: ShowReason?) {
@@ -29,7 +29,7 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
         return post
     }
 
-    fun updatePost(post: Post) {
+    private fun markPostUpdated(post: Post) {
         post.data.updatedAt = feeds.currentTime()
         postStore.updatePost(post.id, post.data)
     }
@@ -75,6 +75,15 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
             throw ForbiddenException()
         }
         postStore.createLike(user.id, post.id, feeds.currentTime())
+        markPostUpdated(post)
+    }
+
+    fun removeLike(user: User, post: Post) {
+        if (!isPostVisible(post, user)) {
+            throw ForbiddenException()
+        }
+        postStore.removeLike(user.id, post.id)
+        markPostUpdated(post)
     }
 
     fun canEditPost(post: Post, requestingUser: User): Boolean {

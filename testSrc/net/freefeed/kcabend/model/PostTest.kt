@@ -310,6 +310,52 @@ public class LikesTest : AbstractModelTest() {
         assertEquals("Hello World Two", user2Timeline[1].body)
     }
 
+    Test fun usersCanUnlikePosts() {
+        val (user1, user2) = createUsers("Alpha", "Beta")
+        val post = user1.publishPost("Hello World")
+        user2.likePost(post)
+        user2.unlikePost(post)
+
+        var user1Posts = user1.readOwnPosts()
+        assertEquals(0, user1Posts[0].likes.size())
+
+        reload()
+        user1Posts = user1.reload().readOwnPosts()
+        assertEquals(0, user1Posts[0].likes.size())
+    }
+
+    Test fun unlikedPostDisappearsFromLikersSubscribersTimelineIfThereAreNoOtherLikers() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        user3.subscribeTo(user2)
+        val post = user1.publishPost("Hello World")
+        user2.likePost(post)
+        assertEquals(1, user3.homeFeed.postCount)
+
+        user2.unlikePost(post)
+        assertEquals(0, user3.homeFeed.postCount)
+        assertEquals(0, user2.likesTimeline.postCount)
+    }
+
+    Test fun unlikedPostShowsDifferentReasonIfThereIsAnotherLiker() {
+        val (user1, user2, user3, user4) = createUsers("Alpha", "Beta", "Gamma", "Delta")
+        user3.subscribeTo(user2)
+        user3.subscribeTo(user4)
+        val post = user1.publishPost("Hello World")
+        user2.likePost(post)
+        user4.likePost(post)
+
+        var user3HomePosts = user3.readHomePosts()
+        assertEquals(user2.id, user3HomePosts [0].reason?.userId)
+        assertEquals(ShowReasonAction.Like, user3HomePosts [0].reason?.action)
+
+        user2.unlikePost(post)
+
+        user3HomePosts = user3.readHomePosts()
+        assertEquals(1, user3HomePosts.size())
+        assertEquals(user4.id, user3HomePosts [0].reason?.userId)
+        assertEquals(ShowReasonAction.Like, user3HomePosts [0].reason?.action)
+    }
+
     Ignore Test fun likesOfBlockedUsersArentShown() {
 
     }

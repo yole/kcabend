@@ -51,6 +51,11 @@ class IntMultiMap<T> {
         data[id] = elementData.filterNot(predicate).toArrayList()
     }
 
+    public fun remove(id: Int, value: T) {
+        val elementData = data[id] ?: return
+        elementData.remove(value)
+    }
+
     fun removeAll(id: Int) = data.remove(id)
 }
 
@@ -81,6 +86,11 @@ class TestPostStore: PostStore {
     override fun createLike(userId: Int, postId: Int, timestamp: Long) {
         likes.put(postId, userId)
         userLikes.put(userId, PersistedLike(postId, timestamp))
+    }
+
+    override fun removeLike(userId: Int, postId: Int) {
+        likes.remove(postId, userId)
+        userLikes.remove(userId) { it.postId == postId }
     }
 
     override fun deletePostWithLikes(postId: Int) {

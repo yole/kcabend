@@ -76,37 +76,63 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     fun deletePost(post: Post) {
         feeds.posts.deletePost(post, this)
         ownPosts.removePost(post)
-        propagateToThoseWhoSeePost(post) { it.homeFeed.removePost(post) }
+        getUsersWhoSeePost(post).forEach { it.homeFeed.removePost(post) }
     }
 
     fun likePost(post: Post) {
         feeds.posts.createLike(this, post)
         post.likes.add(id)
-        feeds.posts.updatePost(post)
         likesTimeline.addPost(post)
         propagateToSubscribers { it.homeFeed.addPost(post, ShowReason(id, ShowReasonAction.Like)) }
         bumpPostInAllTimelines(post)
+    }
+
+    fun unlikePost(post: Post) {
+        val usersWhoSawPost = getUsersWhoSeePost(post)
+        feeds.posts.removeLike(this, post)
+        post.likes.remove(id)
+        likesTimeline.removePost(post)
+        usersWhoSawPost.forEach {
+            val reasonToSee = it.getHomeFeedReason(post)
+            if (reasonToSee != null) {
+                it.homeFeed.updateShowReason(post, reasonToSee)
+            }
+            else {
+                it.homeFeed.removePost(post)
+            }
+        }
     }
 
     private fun propagateToSubscribers(callback: (User) -> Unit) {
         subscribers.asSequence().map { feeds.users[it] }.forEach { callback(it) }
     }
 
-    private fun propagateToThoseWhoSeePost(post: Post, callback: (User) -> Unit) {
+    private fun getUsersWhoSeePost(post: Post): Collection<User> {
         val author = feeds.users[post.authorId]
         val likers = feeds.users.getAll(post.likes)
         val allSeeds = setOf(author) + likers.toSet()
         val allRecipientIds = allSeeds.flatMapTo(hashSetOf()) { it.subscribers.ids }
-        val allRecipients = feeds.users.getAll(allRecipientIds)
-        allRecipients.forEach(callback)
+        return feeds.users.getAll(allRecipientIds)
     }
 
     private fun bumpPostInAllTimelines(post: Post) {
-        propagateToThoseWhoSeePost(post) {
+        getUsersWhoSeePost(post).forEach {
             if (id in it.subscriptions) {
                 it.homeFeed.bumpPost(post)
             }
         }
+    }
+
+    private fun getHomeFeedReason(post: Post): ShowReason? {
+        if (post.authorId in subscriptions) {
+            return ShowReason(post.authorId, ShowReasonAction.Subscription)
+        }
+        for (liker in post.likes.asSequence()) {
+            if (liker in subscriptions) {
+                return ShowReason(liker, ShowReasonAction.Like)
+            }
+        }
+        return null
     }
 }
 
