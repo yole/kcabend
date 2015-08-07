@@ -30,6 +30,14 @@ public abstract class AbstractModelTest {
     fun User.readHomePosts() = homeFeed.getPosts(this)
     fun User.readOwnPosts() = ownPosts.getPosts(this)
 
+    fun User.verifyHomePosts(vararg postBodies: String) {
+        val posts = readHomePosts()
+        assertEquals(postBodies.size(), posts.size())
+        for ((post, expectedBody) in posts zip postBodies) {
+            assertEquals(expectedBody, post.body)
+        }
+    }
+
     // Do nothing. The very fact that a timeline is passed here as a parameter ensures that it is loaded.
     fun ensureLoaded(timeline: Timeline) {}
 }
@@ -117,6 +125,18 @@ public class PostTest : AbstractModelTest() {
         assertEquals(2, user3Posts.size())
         assertEquals("Second", user3Posts[0].body)
         assertEquals("First", user3Posts[1].body)
+    }
+
+    Test public fun postAppearsInRiverOfNewsAfterSubscribe() {
+        val (user1, user2) = createUsers("Alpha", "Beta")
+        user1.publishPost("First")
+
+        ensureLoaded(user2.homeFeed)
+        user2.subscribeTo(user1)
+        user2.verifyHomePosts("First")
+
+        user2.unsubscribeFrom(user1)
+        user2.verifyHomePosts()
     }
 
     Ignore Test public fun deletedPostDisappearsFromTimelines() {

@@ -17,9 +17,8 @@ class Feeds(userStore:
 public class UserIdList {
     val ids = TreeSet<Int>()
 
-    fun add(id: Int) {
-        ids.add(id)
-    }
+    fun add(id: Int) = ids.add(id)
+    fun remove(id: Int) = ids.remove(id)
 
     fun set(newIds: List<Int>) {
         ids.clear()
@@ -51,11 +50,20 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     val homeFeed: RiverOfNewsTimeline by lazy { RiverOfNewsTimeline(feeds, this) }
     val likesTimeline: Timeline by lazy { LikesTimeline(feeds, this) }
 
-    fun subscribeTo(targetUser: User) {
-        if (targetUser.id in subscriptions) return
-        feeds.users.createSubscription(this, targetUser)
-        subscriptions.add(targetUser.id)
-        targetUser.subscribers.add(id)
+    fun subscribeTo(targetFeed: Feed) {
+        if (targetFeed.id in subscriptions) return
+        feeds.users.createSubscription(this, targetFeed)
+        subscriptions.add(targetFeed.id)
+        targetFeed.subscribers.add(id)
+        homeFeed.rebuild()
+    }
+
+    fun unsubscribeFrom(targetFeed: Feed) {
+        if (targetFeed.id !in subscriptions) return
+        feeds.users.removeSubscription(this, targetFeed)
+        subscriptions.remove(targetFeed.id)
+        targetFeed.subscribers.remove(id)
+        homeFeed.rebuild()
     }
 
     fun publishPost(body: String): Post {
@@ -123,6 +131,6 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
         allUsers[user.id] = user
         return user
     }
-
-    fun createSubscription(fromUser: User, toUser: User) = userStore.createSubscription(fromUser.id, toUser.id)
+    fun createSubscription(fromUser: User, toUser: Feed) = userStore.createSubscription(fromUser.id, toUser.id)
+    fun removeSubscription(fromUser: User, toUser: Feed) = userStore.removeSubscription(fromUser.id, toUser.id)
 }

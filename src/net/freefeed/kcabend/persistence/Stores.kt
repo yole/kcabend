@@ -5,6 +5,7 @@ data class UserData(val userName: String, val screenName: String, val profile: S
 interface UserStore {
     fun createUser(data: UserData): Int
     fun createSubscription(fromUserId: Int, toUserId: Int)
+    fun removeSubscription(fromUserId: Int, toUserId: Int)
 
     fun loadUser(id: Int): UserData?
     fun loadSubscriptions(id: Int): List<Int>

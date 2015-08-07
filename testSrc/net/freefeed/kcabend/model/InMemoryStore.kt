@@ -25,6 +25,10 @@ class TestUserStore : UserStore {
         subscriptions.add(PersistedSubscription(fromUserId, toUserId))
     }
 
+    override fun removeSubscription(fromUserId: Int, toUserId: Int) {
+        subscriptions.remove(PersistedSubscription(fromUserId, toUserId))
+    }
+
     override fun loadSubscriptions(id: Int) = subscriptions.filter { it.fromUser == id }.map { it.toUser }
     override fun loadSubscribers(id: Int) = subscriptions.filter { it.toUser == id }.map { it.fromUser}
 }
