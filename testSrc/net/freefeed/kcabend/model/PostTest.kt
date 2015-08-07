@@ -154,8 +154,10 @@ public class PostTest : AbstractModelTest() {
         user2.verifyHomePosts()
     }
 
-    Test(expected = ForbiddenException::class) Ignore public fun cantDeleteOtherUsersPost() {
-
+    Test(expected = ForbiddenException::class) public fun cantDeleteOtherUsersPost() {
+        val (user1, user2) = createUsers("Alpha", "Beta")
+        val post = user1.publishPost("Foo")
+        user2.deletePost(post)
     }
 }
 
@@ -295,7 +297,6 @@ public class LikesTest : AbstractModelTest() {
         val user2Timeline = user2.reload().readHomePosts()
         assertEquals("Hello World", user2Timeline[0].body)
         assertEquals("Hello World Two", user2Timeline[1].body)
-
     }
 
     Ignore Test fun likesOfBlockedUsersArentShown() {
