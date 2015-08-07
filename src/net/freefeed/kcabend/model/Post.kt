@@ -34,6 +34,14 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
         postStore.updatePost(post.id, post.data)
     }
 
+    fun deletePost(post: Post, requestingUser: User) {
+        if (!canEditPost(post, requestingUser)) {
+            throw ForbiddenException()
+        }
+        postStore.deletePostWithLikes(post.id)
+        allPosts.remove(post.id)
+    }
+
     fun loadUserPostIds(author: User): List<Int> = postStore.loadUserPostIds(author.id)
     fun loadUserLikes(author: User): List<Int> = postStore.loadUserLikesSortedByTimestamp(author.id)
 
@@ -67,5 +75,9 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
             throw ForbiddenException()
         }
         postStore.createLike(user.id, post.id, feeds.currentTime())
+    }
+
+    fun canEditPost(post: Post, requestingUser: User): Boolean {
+        return post.authorId == requestingUser.id
     }
 }

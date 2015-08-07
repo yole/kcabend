@@ -21,14 +21,22 @@ public abstract class AbstractModelTest {
     }
 
     protected fun reload() {
+        testUserStore.disposed = true
+        testPostStore.disposed = true
         testFeeds = Feeds(testUserStore, testPostStore, { currentTime++ })
     }
 
     protected fun User.reload(): User = testFeeds.users[id]
 
-    fun createUsers(vararg names: String): List<User> = names.map { testFeeds.users.createUser(it) }
-    fun User.readHomePosts() = homeFeed.getPosts(this)
-    fun User.readOwnPosts() = ownPosts.getPosts(this)
+    fun createUsers(vararg names: String): List<User> = names.map {
+        val user = testFeeds.users.createUser(it)
+        ensureLoaded(user.homeFeed)
+        ensureLoaded(user.ownPosts)
+        user
+    }
+
+    fun User.readHomePosts(): List<PostView> = homeFeed.getPosts(this)
+    fun User.readOwnPosts(): List<PostView> = ownPosts.getPosts(this)
 
     fun User.verifyHomePosts(vararg postBodies: String) {
         val posts = readHomePosts()
@@ -131,7 +139,6 @@ public class PostTest : AbstractModelTest() {
         val (user1, user2) = createUsers("Alpha", "Beta")
         user1.publishPost("First")
 
-        ensureLoaded(user2.homeFeed)
         user2.subscribeTo(user1)
         user2.verifyHomePosts("First")
 
@@ -139,7 +146,16 @@ public class PostTest : AbstractModelTest() {
         user2.verifyHomePosts()
     }
 
-    Ignore Test public fun deletedPostDisappearsFromTimelines() {
+    Test public fun deletedPostDisappearsFromTimelines() {
+        val (user1, user2) = createUsers("Alpha", "Beta")
+        user2.subscribeTo(user1)
+        val post = user1.publishPost("Foo")
+        user1.deletePost(post)
+        user2.verifyHomePosts()
+    }
+
+    Test(expected = ForbiddenException::class) Ignore public fun cantDeleteOtherUsersPost() {
+
     }
 }
 

@@ -9,6 +9,7 @@ data class PersistedUser(val id: Int, val data: UserData)
 data class PersistedSubscription(val fromUser: Int, val toUser: Int)
 
 class TestUserStore : UserStore {
+    public var disposed: Boolean = false
     private var lastId: Int = 1
     public val users: MutableMap<Int, PersistedUser> = hashMapOf()
     private val subscriptions = arrayListOf<PersistedSubscription>()
@@ -49,11 +50,14 @@ class IntMultiMap<T> {
         val elementData = data[id] ?: return
         data[id] = elementData.filterNot(predicate).toArrayList()
     }
+
+    fun removeAll(id: Int) = data.remove(id)
 }
 
 data class PersistedLike(val postId: Int, val timestamp: Long)
 
 class TestPostStore: PostStore {
+    public var disposed: Boolean = false
     private var lastId: Int = 1
     public val userPosts: IntMultiMap<PersistedPost> = IntMultiMap()
     public val likes: IntMultiMap<Int> = IntMultiMap()
@@ -77,6 +81,12 @@ class TestPostStore: PostStore {
     override fun createLike(userId: Int, postId: Int, timestamp: Long) {
         likes.put(postId, userId)
         userLikes.put(userId, PersistedLike(postId, timestamp))
+    }
+
+    override fun deletePostWithLikes(postId: Int) {
+        val post = allPosts.remove(postId) ?: throw IllegalStateException("Trying to delete a non-existing post")
+        userPosts.remove(post.data.author) { it.id == postId }
+        likes.removeAll(postId)
     }
 
     override fun loadUserPostIds(author: Int): List<Int> {

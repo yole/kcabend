@@ -21,6 +21,13 @@ public open class Timeline(val feeds: Feeds) {
         }
     }
 
+    fun removePost(post: Post) {
+        val index = postIds.indexOf(post.id)
+        if (index >= 0) {
+            postIds.remove(index)
+        }
+    }
+
     private fun createView(post: Post): PostView = PostView(post, post.likes, getReason(post))
 
     protected open fun getReason(post: Post): ShowReason? = null

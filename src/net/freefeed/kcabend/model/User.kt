@@ -30,7 +30,7 @@ public class UserIdList {
     fun size() = ids.size()
 }
 
-public open class Feed(protected val feeds: Feeds,
+public open class Feed(val feeds: Feeds,
                        val id: Int,
                        val userName: String,
                        val screenName: String,
@@ -69,8 +69,14 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     fun publishPost(body: String): Post {
         val post = feeds.posts.createPost(id, intArrayOf(id), body)
         ownPosts.addPost(post)
-        propagateToSubscribers(post)
+        propagateToSubscribers { it.addPost(post) }
         return post
+    }
+
+    fun deletePost(post: Post) {
+        feeds.posts.deletePost(post, this)
+        ownPosts.removePost(post)
+        propagateToSubscribers { it.removePost(post) }
     }
 
     fun likePost(post: Post) {
@@ -78,12 +84,12 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
         post.likes.add(id)
         feeds.posts.updatePost(post)
         likesTimeline.addPost(post)
-        propagateToSubscribers(post, ShowReason(id, ShowReasonAction.Like))
+        propagateToSubscribers { it.addPost(post, ShowReason(id, ShowReasonAction.Like)) }
         bumpPostInAllTimelines(post)
     }
 
-    private fun propagateToSubscribers(post: Post, reason: ShowReason? = null) {
-        subscribers.asSequence().map { feeds.users[it].homeFeed }.forEach { it.addPost(post, reason) }
+    private fun propagateToSubscribers(callback: (RiverOfNewsTimeline) -> Unit) {
+        subscribers.asSequence().map { feeds.users[it].homeFeed }.forEach { callback(it) }
     }
 
     private fun bumpPostInAllTimelines(post: Post) {

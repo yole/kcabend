@@ -18,6 +18,7 @@ interface PostStore {
     fun createPost(data: PostData): Int
     fun updatePost(id: Int, data: PostData)
     fun createLike(userId: Int, postId: Int, timestamp: Long)
+    fun deletePostWithLikes(postId: Int)
 
     fun loadUserPostIds(author: Int): List<Int>
     fun loadPost(postId: Int): PostData?
