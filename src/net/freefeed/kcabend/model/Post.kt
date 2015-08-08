@@ -20,19 +20,22 @@ public class PostView(val post: Post, val likes: UserIdList, val reason: ShowRea
 public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
     private val allPosts = HashMap<Int, Post>()
 
-    fun createPost(author: Int, toFeeds: IntArray, body: String): Post {
-        if (author in toFeeds) {
-            if (toFeeds.size() != 1) throw IncorrectOperationException()
-        }
+    fun createPost(author: User, toFeedIds: IntArray, body: String): Post {
+        val toFeeds = feeds.users.getAll(toFeedIds.asList())
 
-        if (isDirect(author, toFeeds)) {
-            if (toFeeds.any { !isMutualSubscription(author, it) }) {
+        if (isDirect(author.id, toFeeds)) {
+            if (toFeeds.any { !isMutualSubscription(author, it as User) }) {
+                throw ForbiddenException()
+            }
+        }
+        else {
+            if (toFeeds.any { it != author && !it.isSubscribedGroup(author) }) {
                 throw ForbiddenException()
             }
         }
 
         val createdAt = feeds.currentTime()
-        val postData = PostData(createdAt, createdAt, author, toFeeds, body)
+        val postData = PostData(createdAt, createdAt, author.id, toFeedIds, body)
         val postId = postStore.createPost(postData)
         val post = Post(postId, postData)
         allPosts[post.id] = post
@@ -52,7 +55,7 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
         allPosts.remove(post.id)
     }
 
-    fun loadUserPostIds(author: User): List<Int> = postStore.loadUserPostIds(author.id)
+    fun loadUserPostIds(author: Feed): List<Int> = postStore.loadUserPostIds(author.id)
     fun loadUserLikes(author: User): List<Int> = postStore.loadUserLikesSortedByTimestamp(author.id)
 
     fun getPost(id: Int, requestingUser: User?): Post? {
@@ -68,15 +71,17 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
         return post
     }
 
-    public fun isDirect(post: Post): Boolean = isDirect(post.authorId, post.data.toFeeds)
+    public fun isDirect(post: Post): Boolean {
+        val toFeeds = feeds.users.getAll(post.data.toFeeds.asList())
+        return isDirect(post.authorId, toFeeds)
+    }
 
-    public fun isDirect(authorId: Int, toFeedIds: IntArray): Boolean {
-        val toFeeds = feeds.users.getAll(toFeedIds.asList())
+    public fun isDirect(authorId: Int, toFeeds: List<Feed>): Boolean {
         return toFeeds.all { it is User && it.id != authorId }
     }
 
     fun isPostVisible(post: Post, requestingUser: User?): Boolean {
-        val author = feeds.users[post.authorId]
+        val author = feeds.users.getUser(post.authorId)
 
         if (isDirect(post)) {
             return requestingUser != null && (requestingUser.id == author.id || requestingUser.id in post.data.toFeeds)
@@ -116,12 +121,20 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
     }
 
     fun canEditPost(post: Post, requestingUser: User): Boolean {
-        return post.authorId == requestingUser.id
+        if (post.authorId == requestingUser.id) return true
+
+        val toFeeds = feeds.users.getAll(post.data.toFeeds)
+        if (toFeeds.any { it is Group && it.admins.contains(requestingUser.id) }) {
+            return true
+        }
+
+        return false
     }
 
-    private fun isMutualSubscription(userId1: Int, userId2: Int): Boolean {
-        val user1 = feeds.users[userId1]
-        val user2 = feeds.users[userId2]
-        return userId1 in user2.subscriptions && userId2 in user1.subscriptions
+    private fun isMutualSubscription(user1: User, user2: User): Boolean {
+        return user1.id in user2.subscriptions && user2.id in user1.subscriptions
     }
+
+    private fun Feed.isSubscribedGroup(subscriber: User) =
+        this is Group && subscriber.id in subscribers
 }

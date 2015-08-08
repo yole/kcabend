@@ -1,7 +1,8 @@
 package net.freefeed.kcabend.model
 
 import net.freefeed.kcabend.persistence.PostData
-import net.freefeed.kcabend.persistence.UserData
+import net.freefeed.kcabend.persistence.FeedData
+import net.freefeed.kcabend.persistence.FeedType
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
@@ -25,7 +26,8 @@ public abstract class AbstractModelTest {
         testFeeds = Feeds(testUserStore, testPostStore, { currentTime++ })
     }
 
-    protected fun User.reload(): User = testFeeds.users[id]
+    @suppress("UNCHECKED_CAST")
+    protected fun <T: Feed> T.reload(): T = testFeeds.users[id] as T
 
     fun createUsers(vararg names: String): List<User> = names.map {
         val user = testFeeds.users.createUser(it)
@@ -34,6 +36,7 @@ public abstract class AbstractModelTest {
         user
     }
 
+    fun User.publishPost(body: String, vararg toFeeds: Feed) = publishPost(body, toFeeds.map { it.id }.toIntArray())
     fun User.readHomePosts(): List<PostView> = homeFeed.getPosts(this)
     fun User.readOwnPosts(): List<PostView> = ownPosts.getPosts(this)
 
@@ -66,7 +69,7 @@ public class PostTest : AbstractModelTest() {
     }
 
     Test public fun testPostsAreLoaded() {
-        val userId = testUserStore.createUser(UserData("alpha", "Alpha", "alpha", false))
+        val userId = testUserStore.createFeed(FeedData(FeedType.User, "alpha", "Alpha", "alpha", false))
         val createdAt = testFeeds.currentTime()
         val postId = testPostStore.createPost(PostData(createdAt, createdAt, userId, intArrayOf(userId), "Hello World"))
 

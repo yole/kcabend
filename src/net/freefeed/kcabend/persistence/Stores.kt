@@ -1,20 +1,24 @@
 package net.freefeed.kcabend.persistence
 
-data class UserData(val userName: String, val screenName: String, val profile: String, val private: Boolean)
+enum class FeedType { User, Group }
+data class FeedData(val feedType: FeedType, val userName: String, val screenName: String, val profile: String, val private: Boolean)
 
 interface UserStore {
-    fun createUser(data: UserData): Int
+    fun createFeed(data: FeedData): Int
+    fun loadFeed(id: Int): FeedData?
 
-    fun createSubscription(fromUserId: Int, toUserId: Int)
-    fun removeSubscription(fromUserId: Int, toUserId: Int)
+    fun createSubscription(fromUserId: Int, toFeedId: Int)
+    fun removeSubscription(fromUserId: Int, toFeedId: Int)
+    fun loadSubscriptions(id: Int): List<Int>
+    fun loadSubscribers(id: Int): List<Int>
 
     fun createBlock(fromUserId: Int, toUserId: Int)
     fun removeBlock(fromUserId: Int, toUserId: Int)
+    fun loadBlocks(userId: Int): List<Int>
 
-    fun loadUser(id: Int): UserData?
-    fun loadSubscriptions(id: Int): List<Int>
-    fun loadSubscribers(id: Int): List<Int>
-    fun loadBlocks(id: Int): List<Int>
+    fun createAdmin(groupId: Int, adminId: Int)
+    fun removeAdmin(groupId: Int, adminId: Int)
+    fun loadAdmins(groupId: Int): List<Int>
 }
 
 data class PostData(val createdAt: Long, var updatedAt: Long, val author: Int, val toFeeds: IntArray, val body: String)

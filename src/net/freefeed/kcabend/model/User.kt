@@ -1,13 +1,14 @@
 package net.freefeed.kcabend.model
 
 import net.freefeed.kcabend.persistence.PostStore
-import net.freefeed.kcabend.persistence.UserData
+import net.freefeed.kcabend.persistence.FeedData
+import net.freefeed.kcabend.persistence.FeedType
 import net.freefeed.kcabend.persistence.UserStore
 import java.util.TreeMap
 import java.util.TreeSet
 
-class Feeds(userStore:
-            UserStore, postStore: PostStore,
+class Feeds(userStore: UserStore,
+            postStore: PostStore,
             val currentTime: () -> Long = { System.currentTimeMillis() }) {
     val posts = Posts(postStore, this)
     val users = Users(userStore, this)
@@ -42,6 +43,7 @@ public open class Feed(val feeds: Feeds,
 
     val subscribers = UserIdList()
 
+    val ownPosts: Timeline by lazy { PostsTimeline(feeds, this) }
 
 }
 
@@ -51,7 +53,6 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     val subscriptions = UserIdList()
     val blockedUsers = UserIdList()
 
-    val ownPosts: Timeline by lazy { PostsTimeline(feeds, this) }
     val homeFeed: RiverOfNewsTimeline by lazy { RiverOfNewsTimeline(feeds, this) }
     val likesTimeline: Timeline by lazy { LikesTimeline(feeds, this) }
     val directMessagesTimeline: TimelineView = DirectMessagesTimeline(feeds, this)
@@ -102,7 +103,7 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     }
 
     fun publishPost(body: String, toFeeds: IntArray = intArrayOf(id)): Post {
-        val post = feeds.posts.createPost(id, toFeeds, body)
+        val post = feeds.posts.createPost(this, toFeeds, body)
         ownPosts.addPost(post)
         propagateToRecipients(post) { it.homeFeed.addPost(post) }
         return post
@@ -117,8 +118,12 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     fun likePost(post: Post) {
         feeds.posts.createLike(this, post)
         post.likes.add(id)
-        likesTimeline.addPost(post)
-        propagateToRecipients(post) { it.homeFeed.addPost(post, ShowReason(id, ShowReasonAction.Like)) }
+        if (!feeds.posts.isDirect(post) && !post.isGroupPost()) {
+            likesTimeline.addPost(post)
+            feeds.users.getAllUsers(subscribers).forEach {
+                it.homeFeed.addPost(post, ShowReason(id, ShowReasonAction.Like))
+            }
+        }
         bumpPostInAllTimelines(post)
     }
 
@@ -138,18 +143,37 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
         }
     }
 
+    fun createGroup(userName: String): Group {
+        val group = feeds.users.createGroup(this, userName)
+        subscribeTo(group)
+        return group
+    }
+
+    fun addGroupAdmin(group: Group, newAdmin: User) = feeds.users.addAdmin(group, newAdmin, this)
+    fun removeGroupAdmin(group: Group, newAdmin: User) = feeds.users.removeAdmin(group, newAdmin, this)
+
     private fun propagateToRecipients(post: Post, callback: (User) -> Unit) {
-        val recipients = setOf(id) + if (feeds.posts.isDirect(post)) post.data.toFeeds.asIterable() else subscribers.ids
-        recipients.map { feeds.users[it] }.forEach { callback(it) }
+        val recipients = setOf(id) + if (feeds.posts.isDirect(post))
+            post.data.toFeeds.asIterable()
+        else
+            feeds.users.getAll(post.data.toFeeds.asList()).flatMap { it.subscribers.ids }
+
+        feeds.users.getAllUsers(recipients).forEach { callback(it) }
     }
 
     private fun getUsersWhoSeePost(post: Post): Collection<User> {
         val author = feeds.users[post.authorId]
-        val likers = feeds.users.getAll(post.likes)
-        val allSeeds = setOf(author) + likers.toSet()
+        val toFeeds = feeds.users.getAll(post.data.toFeeds)
+        var allSeeds = setOf(author) + toFeeds.toSet()
+        if (!post.isGroupPost()) {
+            allSeeds += feeds.users.getAll(post.likes)
+        }
+
         val allRecipientIds = allSeeds.flatMapTo(hashSetOf()) { it.subscribers.ids }
-        return feeds.users.getAll(allRecipientIds)
+        return feeds.users.getAllUsers(allRecipientIds)
     }
+
+    private fun Post.isGroupPost() = feeds.users.getAll(data.toFeeds).all { it is Group }
 
     private fun bumpPostInAllTimelines(post: Post) {
         getUsersWhoSeePost(post).forEach {
@@ -174,36 +198,82 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
 
 public class NotFoundException(val type: String, val id: Int) : Exception("Can't find $type with ID $id")
 public class ForbiddenException() : Exception("This operation is forbidden")
-public class IncorrectOperationException() : Exception("This operation is incorrect")
+
+public class Group(feeds: Feeds, id: Int, userName: String, screenName: String, profile: String, private: Boolean)
+    : Feed(feeds, id, userName, screenName, profile, private)
+{
+    val admins = UserIdList()
+
+}
 
 public class Users(private val userStore: UserStore, val feeds: Feeds) {
-    private var allUsers = TreeMap<Int, User>()
+    private var allUsers = TreeMap<Int, Feed>()
 
-    fun get(id: Int): User {
+    fun get(id: Int): Feed {
         val user = allUsers[id]
         if (user != null) {
             return user
         }
-        val data = userStore.loadUser(id)
+        val data = userStore.loadFeed(id)
         if (data != null) {
-            val loadedUser = User(feeds, id, data.userName, data.screenName, data.profile, data.private)
-            loadedUser.subscriptions.set(userStore.loadSubscriptions(id))
-            loadedUser.subscribers.set(userStore.loadSubscribers(id))
-            loadedUser.blockedUsers.set(userStore.loadBlocks(id))
-            allUsers[id] = loadedUser
-            return loadedUser
+            val loadedFeed = createFeedObject(id, data)
+            loadedFeed.subscribers.set(userStore.loadSubscribers(id))
+            if (loadedFeed is User) {
+                loadedFeed.subscriptions.set(userStore.loadSubscriptions(id))
+                loadedFeed.blockedUsers.set(userStore.loadBlocks(id))
+            }
+            else if (loadedFeed is Group) {
+                loadedFeed.admins.set(userStore.loadAdmins(id))
+            }
+            allUsers[id] = loadedFeed
+            return loadedFeed
         }
         throw NotFoundException("User", id)
     }
 
-    fun getAll(userIdList: UserIdList): List<User> = userIdList.ids.map { get(it) }
-    fun getAll(userIdList: Collection<Int>): List<User> = userIdList.map { get(it) }
+    private fun createFeedObject(id: Int, data: FeedData): Feed = when(data.feedType) {
+        FeedType.User -> User(feeds, id, data.userName, data.screenName, data.profile, data.private)
+        FeedType.Group -> Group(feeds, id, data.userName, data.screenName, data.profile, data.private)
+    }
 
-    fun createUser(name: String, private: Boolean = false): User {
-        val userId = userStore.createUser(UserData(name, name, "", private))
-        val user = User(feeds, userId, name, name, "", private)
-        allUsers[user.id] = user
-        return user
+    fun getUser(id: Int): User = get(id) as User
+
+    fun getAll(userIdList: UserIdList): List<Feed> = userIdList.ids.map { get(it) }
+    fun getAll(userIdList: Collection<Int>): List<Feed> = userIdList.map { get(it) }
+    fun getAll(userIdList: IntArray): List<Feed> = userIdList.map { get(it) }
+
+    fun getAllUsers(userIdList: UserIdList): List<User> = userIdList.ids.map { get(it) as User }
+    fun getAllUsers(userIdList: Collection<Int>): List<User> = userIdList.map { get(it) as User }
+
+    fun createUser(name: String, private: Boolean = false) = createFeed(FeedType.User, name, private) as User
+
+    fun createGroup(owner: User, name: String, private: Boolean = false): Group {
+        val group = createFeed(FeedType.Group, name, private) as Group
+        createAdmin(group, owner)
+        return group
+    }
+
+    fun addAdmin(group: Group, newAdmin: User, requestingUser: User) {
+        if (requestingUser.id !in group.admins) {
+            throw ForbiddenException()
+        }
+        createAdmin(group, newAdmin)
+    }
+
+    fun removeAdmin(group: Group, admin: User, requestingUser: User) {
+        if (requestingUser.id !in group.admins || group.admins.size() == 1) {
+            throw ForbiddenException()
+        }
+        userStore.removeAdmin(group.id, admin.id)
+        group.admins.remove(admin.id)
+    }
+
+    private fun createFeed(feedType: FeedType, name: String, private: Boolean = false): Feed {
+        val feedData = FeedData(feedType, name, name, "", private)
+        val feedId = userStore.createFeed(feedData)
+        val feed = createFeedObject(feedId, feedData)
+        allUsers[feed.id] = feed
+        return feed
     }
 
     fun createSubscription(fromUser: User, toUser: Feed) = userStore.createSubscription(fromUser.id, toUser.id)
@@ -211,4 +281,10 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
 
     fun createBlock(fromUser: User, toUser: User) = userStore.createBlock(fromUser.id, toUser.id)
     fun removeBlock(fromUser: User, toUser: User) = userStore.removeBlock(fromUser.id, toUser.id)
+
+    fun createAdmin(group: Group, admin: User) {
+        userStore.createAdmin(group.id, admin.id)
+        group.admins.add(admin.id)
+
+    }
 }

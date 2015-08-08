@@ -1,6 +1,7 @@
 package net.freefeed.kcabend.model
 
-import net.freefeed.kcabend.persistence.UserData
+import net.freefeed.kcabend.persistence.FeedData
+import net.freefeed.kcabend.persistence.FeedType
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -11,7 +12,7 @@ public class UserTest : AbstractModelTest() {
     }
 
     Test public fun userIsLoaded() {
-        val id = testUserStore.createUser(UserData("alpha", "Alpha", "alpha", false))
+        val id = testUserStore.createFeed(FeedData(FeedType.User, "alpha", "Alpha", "alpha", false))
         val user = testFeeds.users[id]
         assertEquals("alpha", user.userName)
     }
@@ -23,7 +24,7 @@ public class UserTest : AbstractModelTest() {
 
         reload()
 
-        val newUser2 = testFeeds.users[user2.id]
+        val newUser2 = user2.reload()
         assertEquals(1, newUser2.subscriptions.size())
         val newUser1 = testFeeds.users[user1.id]
         assertEquals(1, newUser1.subscribers.size())

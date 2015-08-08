@@ -50,7 +50,7 @@ public open class Timeline(val feeds: Feeds) : TimelineView {
             return likes
         }
 
-        val likers = feeds.users.getAll(likes)
+        val likers = feeds.users.getAllUsers(likes)
         val visibleLikes = likers.filter {
             requestingUser.id !in it.blockedUsers && it.id !in requestingUser.blockedUsers
         }.map { it.id }
@@ -58,7 +58,7 @@ public open class Timeline(val feeds: Feeds) : TimelineView {
     }
 }
 
-public class PostsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds) {
+public class PostsTimeline(feeds: Feeds, val owner: Feed) : Timeline(feeds) {
     init {
         postIds.addAll(feeds.posts.loadUserPostIds(owner))
     }
@@ -86,7 +86,7 @@ public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds
         subscriptions.forEach {
             unsortedPostIds.addAll(it.ownPosts.postIds)
         }
-        subscriptions.forEach { user ->
+        subscriptions.filterIsInstance<User>().forEach { user ->
             user.likesTimeline.postIds.forEach {
                 if (unsortedPostIds.add(it)) {
                     reasons[it] = ShowReason(user.id, ShowReasonAction.Like)

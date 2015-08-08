@@ -29,7 +29,7 @@ public class DirectsTest : AbstractModelTest() {
         assertEquals(0, alphaPostsSeenByGamma.size())
     }
 
-    Test(expected = IncorrectOperationException::class) public fun cantSendPostToSelfAndOtherUser() {
+    Test(expected = ForbiddenException::class) public fun cantSendPostToSelfAndOtherUser() {
         val (user1, user2) = createUsers("Alpha", "Beta")
         user1.subscribeTo(user2)
         user2.subscribeTo(user1)
@@ -53,4 +53,6 @@ public class DirectsTest : AbstractModelTest() {
         val directs = user1.directMessagesTimeline.getPosts(user1)
         assertEquals(1, directs.size())
     }
+
+    // TODO Can a recipient of a direct message delete it?
 }

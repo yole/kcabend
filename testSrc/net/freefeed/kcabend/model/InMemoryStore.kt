@@ -2,10 +2,10 @@ package net.freefeed.kcabend.model
 
 import net.freefeed.kcabend.persistence.PostData
 import net.freefeed.kcabend.persistence.PostStore
-import net.freefeed.kcabend.persistence.UserData
+import net.freefeed.kcabend.persistence.FeedData
 import net.freefeed.kcabend.persistence.UserStore
 
-data class PersistedUser(val id: Int, val data: UserData)
+data class PersistedUser(val id: Int, val data: FeedData)
 data class PersistedUserPair(val fromUser: Int, val toUser: Int)
 
 fun List<PersistedUserPair>.loadToUsers(fromUser: Int): List<Int> = filter { it.fromUser == fromUser }.map { it.toUser }
@@ -16,22 +16,26 @@ class TestUserStore : UserStore {
     public val users: MutableMap<Int, PersistedUser> = hashMapOf()
     private val subscriptions = arrayListOf<PersistedUserPair>()
     private val blocks = arrayListOf<PersistedUserPair>()
+    private val admins = arrayListOf<PersistedUserPair>()
 
-    override fun createUser(data: UserData): Int {
+    override fun createFeed(data: FeedData): Int {
         val user = PersistedUser(lastId++, data)
         users[user.id] = user
         return user.id
     }
 
-    override fun loadUser(id: Int): UserData? = users[id]?.data
+    override fun loadFeed(id: Int): FeedData? = users[id]?.data
 
-    override fun createSubscription(fromUserId: Int, toUserId: Int) {
-        subscriptions.add(PersistedUserPair(fromUserId, toUserId))
+    override fun createSubscription(fromUserId: Int, toFeedId: Int) {
+        subscriptions.add(PersistedUserPair(fromUserId, toFeedId))
     }
 
-    override fun removeSubscription(fromUserId: Int, toUserId: Int) {
-        subscriptions.remove(PersistedUserPair(fromUserId, toUserId))
+    override fun removeSubscription(fromUserId: Int, toFeedId: Int) {
+        subscriptions.remove(PersistedUserPair(fromUserId, toFeedId))
     }
+
+    override fun loadSubscriptions(id: Int) = subscriptions.loadToUsers(id)
+    override fun loadSubscribers(id: Int) = subscriptions.filter { it.toUser == id }.map { it.fromUser}
 
     override fun createBlock(fromUserId: Int, toUserId: Int) {
         blocks.add(PersistedUserPair(fromUserId, toUserId))
@@ -41,9 +45,17 @@ class TestUserStore : UserStore {
         blocks.remove(PersistedUserPair(fromUserId, toUserId))
     }
 
-    override fun loadSubscriptions(id: Int) = subscriptions.loadToUsers(id)
-    override fun loadSubscribers(id: Int) = subscriptions.filter { it.toUser == id }.map { it.fromUser}
-    override fun loadBlocks(id: Int) = blocks.loadToUsers(id)
+    override fun loadBlocks(userId: Int) = blocks.loadToUsers(userId)
+
+    override fun createAdmin(groupId: Int, adminId: Int) {
+        admins.add(PersistedUserPair(groupId, adminId))
+    }
+
+    override fun removeAdmin(groupId: Int, adminId: Int) {
+        admins.remove(PersistedUserPair(groupId, adminId))
+    }
+
+    override fun loadAdmins(groupId: Int): List<Int> = admins.loadToUsers(groupId)
 }
 
 data class PersistedPost(val id: Int, val data: PostData)
