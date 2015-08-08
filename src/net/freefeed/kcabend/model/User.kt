@@ -54,6 +54,7 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     val ownPosts: Timeline by lazy { PostsTimeline(feeds, this) }
     val homeFeed: RiverOfNewsTimeline by lazy { RiverOfNewsTimeline(feeds, this) }
     val likesTimeline: Timeline by lazy { LikesTimeline(feeds, this) }
+    val directMessagesTimeline: TimelineView = DirectMessagesTimeline(feeds, this)
 
     fun subscribeTo(targetFeed: Feed) {
         if (targetFeed.id in blockedUsers || (targetFeed is User && id in targetFeed.blockedUsers)) {
@@ -100,10 +101,10 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
         targetUser.homeFeed.rebuild()
     }
 
-    fun publishPost(body: String): Post {
-        val post = feeds.posts.createPost(id, intArrayOf(id), body)
+    fun publishPost(body: String, toFeeds: IntArray = intArrayOf(id)): Post {
+        val post = feeds.posts.createPost(id, toFeeds, body)
         ownPosts.addPost(post)
-        propagateToSubscribers { it.homeFeed.addPost(post) }
+        propagateToRecipients(post) { it.homeFeed.addPost(post) }
         return post
     }
 
@@ -117,7 +118,7 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
         feeds.posts.createLike(this, post)
         post.likes.add(id)
         likesTimeline.addPost(post)
-        propagateToSubscribers { it.homeFeed.addPost(post, ShowReason(id, ShowReasonAction.Like)) }
+        propagateToRecipients(post) { it.homeFeed.addPost(post, ShowReason(id, ShowReasonAction.Like)) }
         bumpPostInAllTimelines(post)
     }
 
@@ -137,8 +138,9 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
         }
     }
 
-    private fun propagateToSubscribers(callback: (User) -> Unit) {
-        subscribers.ids.map { feeds.users[it] }.forEach { callback(it) }
+    private fun propagateToRecipients(post: Post, callback: (User) -> Unit) {
+        val recipients = setOf(id) + if (feeds.posts.isDirect(post)) post.data.toFeeds.asIterable() else subscribers.ids
+        recipients.map { feeds.users[it] }.forEach { callback(it) }
     }
 
     private fun getUsersWhoSeePost(post: Post): Collection<User> {
@@ -172,6 +174,7 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
 
 public class NotFoundException(val type: String, val id: Int) : Exception("Can't find $type with ID $id")
 public class ForbiddenException() : Exception("This operation is forbidden")
+public class IncorrectOperationException() : Exception("This operation is incorrect")
 
 public class Users(private val userStore: UserStore, val feeds: Feeds) {
     private var allUsers = TreeMap<Int, User>()

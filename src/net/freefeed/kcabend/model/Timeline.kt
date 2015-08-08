@@ -1,12 +1,22 @@
 package net.freefeed.kcabend.model
 
-public open class Timeline(val feeds: Feeds) {
+public interface TimelineView {
+    fun getPosts(requestingUser: User?): List<PostView>
+}
+
+public open class Timeline(val feeds: Feeds) : TimelineView {
    val postIds: MutableList<Int> = arrayListOf()
 
     public val postCount: Int get() = postIds.size()
 
-    fun getPosts(requestingUser: User?): List<PostView> {
-        return postIds.map { feeds.posts.getPost(it, requestingUser) }.filterNotNull().map { createView(it, requestingUser) }
+    override fun getPosts(requestingUser: User?): List<PostView> = getPosts(requestingUser, { true })
+
+    fun getPosts(requestingUser: User?, predicate: (Post) -> Boolean): List<PostView> {
+        return postIds
+                .map { feeds.posts.getPost(it, requestingUser) }
+                .filterNotNull()
+                .filter(predicate)
+                .map { createView(it, requestingUser) }
     }
 
     fun addPost(post: Post) {
@@ -100,5 +110,14 @@ public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds
 
     fun updateShowReason(post: Post, reasonToSee: ShowReason) {
         reasons[post.id] = reasonToSee
+    }
+}
+
+public class DirectMessagesTimeline(val feeds: Feeds, val owner: User) : TimelineView {
+    override fun getPosts(requestingUser: User?): List<PostView> {
+        if (requestingUser != owner) {
+            throw ForbiddenException()
+        }
+        return requestingUser.ownPosts.getPosts(requestingUser, { feeds.posts.isDirect(it) } )
     }
 }

@@ -21,6 +21,16 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
     private val allPosts = HashMap<Int, Post>()
 
     fun createPost(author: Int, toFeeds: IntArray, body: String): Post {
+        if (author in toFeeds) {
+            if (toFeeds.size() != 1) throw IncorrectOperationException()
+        }
+
+        if (isDirect(author, toFeeds)) {
+            if (toFeeds.any { !isMutualSubscription(author, it) }) {
+                throw ForbiddenException()
+            }
+        }
+
         val createdAt = feeds.currentTime()
         val postData = PostData(createdAt, createdAt, author, toFeeds, body)
         val postId = postStore.createPost(postData)
@@ -58,9 +68,21 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
         return post
     }
 
+    public fun isDirect(post: Post): Boolean = isDirect(post.authorId, post.data.toFeeds)
+
+    public fun isDirect(authorId: Int, toFeedIds: IntArray): Boolean {
+        val toFeeds = feeds.users.getAll(toFeedIds.asList())
+        return toFeeds.all { it is User && it.id != authorId }
+    }
+
     fun isPostVisible(post: Post, requestingUser: User?): Boolean {
+        val author = feeds.users[post.authorId]
+
+        if (isDirect(post)) {
+            return requestingUser != null && (requestingUser.id == author.id || requestingUser.id in post.data.toFeeds)
+        }
+
         if (requestingUser != null) {
-            val author = feeds.users[post.authorId]
             if (author.id in requestingUser.blockedUsers || requestingUser.id in author.blockedUsers) {
                 return false
             }
@@ -95,5 +117,11 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
 
     fun canEditPost(post: Post, requestingUser: User): Boolean {
         return post.authorId == requestingUser.id
+    }
+
+    private fun isMutualSubscription(userId1: Int, userId2: Int): Boolean {
+        val user1 = feeds.users[userId1]
+        val user2 = feeds.users[userId2]
+        return userId1 in user2.subscriptions && userId2 in user1.subscriptions
     }
 }
