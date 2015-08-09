@@ -55,6 +55,7 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
 
     val homeFeed: RiverOfNewsTimeline by lazy { RiverOfNewsTimeline(feeds, this) }
     val likesTimeline: Timeline by lazy { LikesTimeline(feeds, this) }
+    val commentsTimeline: Timeline by lazy { CommentsTimeline(feeds, this) }
     val directMessagesTimeline: TimelineView = DirectMessagesTimeline(feeds, this)
 
     fun subscribeTo(targetFeed: Feed) {
@@ -143,6 +144,18 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
         }
     }
 
+    fun commentOnPost(post: Post, text: String) {
+        val commentData = feeds.posts.createComment(this, post, text)
+        post.comments.add(commentData)
+        if (!feeds.posts.isDirect(post) && !post.isGroupPost()) {
+            commentsTimeline.addPost(post)
+            feeds.users.getAllUsers(subscribers).forEach {
+                it.homeFeed.addPost(post, ShowReason(id, ShowReasonAction.Comment))
+            }
+        }
+        bumpPostInAllTimelines(post)
+    }
+
     fun createGroup(userName: String): Group {
         val group = feeds.users.createGroup(this, userName)
         subscribeTo(group)
@@ -167,6 +180,7 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
         var allSeeds = setOf(author) + toFeeds.toSet()
         if (!post.isGroupPost()) {
             allSeeds += feeds.users.getAll(post.likes)
+            allSeeds += feeds.users.getAll(post.comments.map { it.data.author }.toSet())
         }
 
         val allRecipientIds = allSeeds.flatMapTo(hashSetOf()) { it.subscribers.ids }

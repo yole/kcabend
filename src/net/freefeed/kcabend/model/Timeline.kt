@@ -41,7 +41,7 @@ public open class Timeline(val feeds: Feeds) : TimelineView {
     }
 
     private fun createView(post: Post, requestingUser: User?): PostView =
-            PostView(post, filterLikes(post.likes, requestingUser), getShowReason(post))
+            PostView(post, filterLikes(post.likes, requestingUser), post.comments, getShowReason(post))
 
     protected open fun getShowReason(post: Post): ShowReason? = null
 
@@ -70,6 +70,12 @@ public class LikesTimeline(feeds: Feeds, val owner: User) : Timeline(feeds) {
     }
 }
 
+public class CommentsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds) {
+    init {
+        postIds.addAll(feeds.posts.loadUserCommentedPosts(owner))
+    }
+}
+
 public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds) {
     private val reasons = hashMapOf<Int, ShowReason>()
 
@@ -82,16 +88,22 @@ public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds
         reasons.clear()
 
         val unsortedPostIds = hashSetOf<Int>()
+
+        fun addPostsFromTimeline(user: User, timeline: Timeline, showReasonAction: ShowReasonAction) {
+            timeline.postIds.forEach {
+                if (unsortedPostIds.add(it)) {
+                    reasons[it] = ShowReason(user.id, showReasonAction)
+                }
+            }
+        }
+
         val subscriptions = owner.subscriptions.ids.map { feeds.users[it] }
         subscriptions.forEach {
             unsortedPostIds.addAll(it.ownPosts.postIds)
         }
         subscriptions.filterIsInstance<User>().forEach { user ->
-            user.likesTimeline.postIds.forEach {
-                if (unsortedPostIds.add(it)) {
-                    reasons[it] = ShowReason(user.id, ShowReasonAction.Like)
-                }
-            }
+            addPostsFromTimeline(user, user.likesTimeline, ShowReasonAction.Like)
+            addPostsFromTimeline(user, user.commentsTimeline, ShowReasonAction.Comment)
         }
 
         postIds.addAll(unsortedPostIds.toList().sortDescendingBy { feeds.posts.getPost(it, owner)?.updatedAt ?: 0 })

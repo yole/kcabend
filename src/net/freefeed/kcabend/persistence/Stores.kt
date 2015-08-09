@@ -22,6 +22,7 @@ interface UserStore {
 }
 
 data class PostData(val createdAt: Long, var updatedAt: Long, val author: Int, val toFeeds: IntArray, val body: String)
+data class CommentData(val createdAt: Long, val author: Int, val body: String)
 
 interface PostStore {
     fun createPost(data: PostData): Int
@@ -30,8 +31,12 @@ interface PostStore {
     fun removeLike(userId: Int, postId: Int)
     fun deletePostWithLikes(postId: Int)
 
+    fun createComment(postId: Int, commentData: CommentData): Int
+
     fun loadUserPostIds(author: Int): List<Int>
     fun loadPost(postId: Int): PostData?
     fun loadLikes(postId: Int): List<Int>
+    fun loadComments(postId: Int): List<Pair<Int, CommentData>>
     fun loadUserLikesSortedByTimestamp(userId: Int): List<Int>
+    fun loadUserCommentedPosts(userId: Int): List<Int>
 }

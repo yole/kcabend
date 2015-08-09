@@ -1,9 +1,6 @@
 package net.freefeed.kcabend.model
 
-import net.freefeed.kcabend.persistence.PostData
-import net.freefeed.kcabend.persistence.PostStore
-import net.freefeed.kcabend.persistence.FeedData
-import net.freefeed.kcabend.persistence.UserStore
+import net.freefeed.kcabend.persistence.*
 
 data class PersistedUser(val id: Int, val data: FeedData)
 data class PersistedUserPair(val fromUser: Int, val toUser: Int)
@@ -84,6 +81,7 @@ class IntMultiMap<T> {
 }
 
 data class PersistedLike(val postId: Int, val timestamp: Long)
+data class PersistedComment(val postId: Int, val commentData: CommentData)
 
 class TestPostStore: PostStore {
     public var disposed: Boolean = false
@@ -92,6 +90,8 @@ class TestPostStore: PostStore {
     public val likes: IntMultiMap<Int> = IntMultiMap()
     private val userLikes = IntMultiMap<PersistedLike>()
     public val allPosts: MutableMap<Int, PersistedPost> = hashMapOf()
+    public val allComments: MutableMap<Int, PersistedComment> = hashMapOf()
+    val postComments = IntMultiMap<Pair<Int, CommentData>>()
 
     override fun createPost(data: PostData): Int {
         val post = PersistedPost(lastId++, data)
@@ -123,6 +123,16 @@ class TestPostStore: PostStore {
         likes.removeAll(postId)
     }
 
+    override fun createComment(postId: Int, commentData: CommentData): Int {
+        val commentId = lastId++
+        val persistedComment = PersistedComment(postId, commentData)
+        allComments.put(commentId, persistedComment)
+        postComments.put(postId, commentId to commentData)
+        return commentId
+    }
+
+    override fun loadComments(postId: Int) = postComments.get(postId) ?: emptyList()
+
     override fun loadUserPostIds(author: Int): List<Int> {
         return userPosts[author]?.map { it.id } ?: emptyList()
     }
@@ -131,5 +141,13 @@ class TestPostStore: PostStore {
     override fun loadLikes(postId: Int) = likes[postId] ?: emptyList()
     override fun loadUserLikesSortedByTimestamp(userId: Int): List<Int> =
             userLikes[userId]?.sortDescendingBy { it.timestamp }?.map { it.postId } ?: emptyList()
-}
 
+    override fun loadUserCommentedPosts(userId: Int): List<Int> {
+        return allComments.values()
+                .filter { it.commentData.author == userId }
+                .groupBy { it.postId }
+                .map { it.key to it.value.maxBy { it.commentData.createdAt } }
+                .sortDescendingBy { it.second!!.commentData.createdAt }
+                .map { it.first }
+    }
+}

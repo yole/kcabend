@@ -1,19 +1,23 @@
 package net.freefeed.kcabend.model
 
+import net.freefeed.kcabend.persistence.CommentData
 import net.freefeed.kcabend.persistence.PostData
 import net.freefeed.kcabend.persistence.PostStore
 import java.util.HashMap
+
+public data class Comment(val id: Int, val data: CommentData)
 
 public class Post(val id: Int, val data: PostData) {
     val authorId: Int get() = data.author
     val updatedAt: Long get() = data.updatedAt
     val likes = UserIdList()
+    val comments = arrayListOf<Comment>()
 }
 
-enum class ShowReasonAction { Subscription, Like }
+enum class ShowReasonAction { Subscription, Like, Comment }
 data class ShowReason(val userId: Int, val action: ShowReasonAction)
 
-public class PostView(val post: Post, val likes: UserIdList, val reason: ShowReason?) {
+public class PostView(val post: Post, val likes: UserIdList, val comments: List<Comment>, val reason: ShowReason?) {
     val body: String get() = post.data.body
 }
 
@@ -57,6 +61,7 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
 
     fun loadUserPostIds(author: Feed): List<Int> = postStore.loadUserPostIds(author.id)
     fun loadUserLikes(author: User): List<Int> = postStore.loadUserLikesSortedByTimestamp(author.id)
+    fun loadUserCommentedPosts(author: User): List<Int> = postStore.loadUserCommentedPosts(author.id)
 
     fun getPost(id: Int, requestingUser: User?): Post? {
         var post = allPosts[id] ?: loadPost(id)
@@ -67,6 +72,7 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
         val data = postStore.loadPost(id) ?: throw NotFoundException("Post", id)
         val post = Post(id, data)
         post.likes.set(postStore.loadLikes(id))
+        post.comments.addAll(postStore.loadComments(id).map { Comment(it.first, it.second) })
         allPosts[id] = post
         return post
     }
@@ -118,6 +124,16 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
         }
         postStore.removeLike(user.id, post.id)
         markPostUpdated(post)
+    }
+
+    fun createComment(user: User, post: Post, text: String): Comment {
+        if (!isPostVisible(post, user)) {
+            throw ForbiddenException()
+        }
+        val commentData = CommentData(feeds.currentTime(), user.id, text)
+        val id = postStore.createComment(post.id, commentData)
+        markPostUpdated(post)
+        return Comment(id, commentData)
     }
 
     fun canEditPost(post: Post, requestingUser: User): Boolean {
