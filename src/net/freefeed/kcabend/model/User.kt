@@ -47,7 +47,7 @@ public open class Feed(val feeds: Feeds,
 
 }
 
-public class User(feeds: Feeds, id: Int, userName: String, val encryptedPassword: String?,
+public class User(feeds: Feeds, id: Int, userName: String, val hashedPassword: String?,
                   screenName: String, profile: String, private: Boolean)
     : Feed(feeds, id, userName, screenName, profile, private)
 {
@@ -274,7 +274,7 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
     }
 
     private fun createFeedObject(id: Int, data: FeedData): Feed = when(data.feedType) {
-        FeedType.User -> User(feeds, id, data.userName, data.encryptedPassword, data.screenName, data.profile, data.private)
+        FeedType.User -> User(feeds, id, data.userName, data.hashedPassword, data.screenName, data.profile, data.private)
         FeedType.Group -> Group(feeds, id, data.userName, data.screenName, data.profile, data.private)
     }
 
@@ -288,8 +288,8 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
     fun getAllUsers(userIdList: Collection<Int>): List<User> = userIdList.map { get(it) as User }
 
     fun createUser(userName: String,
-                   encryptedPassword: String? = null,
-                   private: Boolean = false) = createFeed(FeedType.User, userName, encryptedPassword, private) as User
+                   hashedPassword: String? = null,
+                   private: Boolean = false) = createFeed(FeedType.User, userName, hashedPassword, private) as User
 
     fun createGroup(owner: User, name: String, private: Boolean = false): Group {
         val group = createFeed(FeedType.Group, name, private = private) as Group
@@ -312,8 +312,8 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
         group.admins.remove(admin.id)
     }
 
-    private fun createFeed(feedType: FeedType, name: String, encryptedPassword: String? = null, private: Boolean = false): Feed {
-        val feedData = FeedData(feedType, name, encryptedPassword, name, "", private)
+    private fun createFeed(feedType: FeedType, name: String, hashedPassword: String? = null, private: Boolean = false): Feed {
+        val feedData = FeedData(feedType, name, hashedPassword, name, "", private)
         val feedId = userStore.createFeed(feedData)
         val feed = createFeedObject(feedId, feedData)
         allUsers[feed.id] = feed

@@ -20,7 +20,7 @@ public class AuthenticatorTest {
         authenticator = Authenticator(feeds, "Secret")
     }
 
-    Test fun verifyEncryptedPassword() {
+    Test fun verifyPassword() {
         authenticator.createUser("Alpha", "password")
         assertNotNull(authenticator.verifyPassword("Alpha", "password"))
     }

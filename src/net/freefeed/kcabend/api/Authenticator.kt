@@ -10,13 +10,13 @@ import java.security.SignatureException
 
 public class Authenticator(private val feeds: Feeds, val secret: String) {
     fun createUser(userName: String, password: String, private: Boolean = false): User {
-        val encryptedPassword = BCrypt.hashpw(password, BCrypt.gensalt())
-        return feeds.users.createUser(userName, encryptedPassword, private)
+        val hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt())
+        return feeds.users.createUser(userName, hashedPassword, private)
     }
 
     fun verifyPassword(userName: String, password: String): String {
         val user = feeds.users.findByUserName(userName)
-        if (user !is User || user.encryptedPassword == null || !BCrypt.checkpw(password, user.encryptedPassword)) {
+        if (user !is User || user.hashedPassword == null || !BCrypt.checkpw(password, user.hashedPassword)) {
             throw ForbiddenException()
         }
         return JWTSigner(secret).sign(hashMapOf("userId" to user.id))
@@ -27,7 +27,7 @@ public class Authenticator(private val feeds: Feeds, val secret: String) {
             val payload = JWTVerifier(secret).verify(authToken)
             val userId = payload["userId"] as Int? ?: throw ForbiddenException()
             val user = feeds.users[userId]
-            if (user !is User || user.encryptedPassword == null) {
+            if (user !is User || user.hashedPassword == null) {
                 throw ForbiddenException()
             }
             return user
