@@ -12,9 +12,15 @@ public class UserTest : AbstractModelTest() {
     }
 
     Test public fun userIsLoaded() {
-        val id = testUserStore.createFeed(FeedData(FeedType.User, "alpha", "Alpha", "alpha", false))
+        val id = testUserStore.createFeed(FeedData(FeedType.User, "alpha", null, "Alpha", "alpha", false))
         val user = testFeeds.users[id]
         assertEquals("alpha", user.userName)
+    }
+
+    Test public fun findByUsername() {
+        val id = testUserStore.createFeed(FeedData(FeedType.User, "alpha", null, "Alpha", "alpha", false))
+        val user = testFeeds.users.findByUserName("alpha")
+        assertEquals(id, user!!.id)
     }
 
     Test public fun subscriptionsAreLoaded() {

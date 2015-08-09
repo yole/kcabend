@@ -11,5 +11,7 @@
     <orderEntry type="library" name="KotlinJavaRuntime" level="project" />
     <orderEntry type="library" name="ktor" level="project" />
     <orderEntry type="library" name="junit:junit:4.12" level="project" />
+    <orderEntry type="library" name="jbcrypt-0.4" level="project" />
+    <orderEntry type="library" name="java-jwt-2.1.0" level="project" />
   </component>
 </module>

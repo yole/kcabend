@@ -1,11 +1,17 @@
 package net.freefeed.kcabend.persistence
 
 enum class FeedType { User, Group }
-data class FeedData(val feedType: FeedType, val userName: String, val screenName: String, val profile: String, val private: Boolean)
+data class FeedData(val feedType: FeedType,
+                    val userName: String,
+                    val encryptedPassword: String?,
+                    val screenName: String,
+                    val profile: String,
+                    val private: Boolean)
 
 interface UserStore {
     fun createFeed(data: FeedData): Int
     fun loadFeed(id: Int): FeedData?
+    fun lookupUserName(userName: String): Int?
 
     fun createSubscription(fromUserId: Int, toFeedId: Int)
     fun removeSubscription(fromUserId: Int, toFeedId: Int)

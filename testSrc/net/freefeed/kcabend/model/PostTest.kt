@@ -69,7 +69,7 @@ public class PostTest : AbstractModelTest() {
     }
 
     Test public fun testPostsAreLoaded() {
-        val userId = testUserStore.createFeed(FeedData(FeedType.User, "alpha", "Alpha", "alpha", false))
+        val userId = testUserStore.createFeed(FeedData(FeedType.User, "alpha", null, "Alpha", "alpha", false))
         val createdAt = testFeeds.currentTime()
         val postId = testPostStore.createPost(PostData(createdAt, createdAt, userId, intArrayOf(userId), "Hello World"))
 

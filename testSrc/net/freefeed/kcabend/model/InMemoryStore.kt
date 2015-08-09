@@ -11,6 +11,7 @@ class TestUserStore : UserStore {
     public var disposed: Boolean = false
     private var lastId: Int = 1
     public val users: MutableMap<Int, PersistedUser> = hashMapOf()
+    private val usersByName = hashMapOf<String, Int>()
     private val subscriptions = arrayListOf<PersistedUserPair>()
     private val blocks = arrayListOf<PersistedUserPair>()
     private val admins = arrayListOf<PersistedUserPair>()
@@ -18,10 +19,13 @@ class TestUserStore : UserStore {
     override fun createFeed(data: FeedData): Int {
         val user = PersistedUser(lastId++, data)
         users[user.id] = user
+        usersByName[data.userName] = user.id
         return user.id
     }
 
     override fun loadFeed(id: Int): FeedData? = users[id]?.data
+
+    override fun lookupUserName(userName: String): Int?  = usersByName[userName]
 
     override fun createSubscription(fromUserId: Int, toFeedId: Int) {
         subscriptions.add(PersistedUserPair(fromUserId, toFeedId))

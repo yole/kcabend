@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component name="libraryTable">
+  <library name="java-jwt-2.1.0">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/java-jwt-2.1.0.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
