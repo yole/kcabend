@@ -5,7 +5,9 @@ import net.freefeed.kcabend.persistence.PostData
 import net.freefeed.kcabend.persistence.PostStore
 import java.util.HashMap
 
-public data class Comment(val id: Int, val data: CommentData)
+public data class Comment(val id: Int, val data: CommentData) {
+    val author: Int get() = data.author
+}
 
 public class Post(val id: Int, val data: PostData) {
     val authorId: Int get() = data.author
@@ -93,10 +95,8 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
             return requestingUser != null && (requestingUser.id == author.id || requestingUser.id in post.data.toFeeds)
         }
 
-        if (requestingUser != null) {
-            if (author.id in requestingUser.blockedUsers || requestingUser.id in author.blockedUsers) {
-                return false
-            }
+        if (requestingUser != null && author.isContentBlocked(requestingUser)) {
+            return false
         }
 
         val toFeeds = post.data.toFeeds.map { feeds.users.get(it) }
@@ -123,17 +123,25 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
             throw ForbiddenException()
         }
         postStore.removeLike(user.id, post.id)
-        markPostUpdated(post)
     }
 
     fun createComment(user: User, post: Post, text: String): Comment {
         if (!isPostVisible(post, user)) {
             throw ForbiddenException()
         }
-        val commentData = CommentData(feeds.currentTime(), user.id, text)
-        val id = postStore.createComment(post.id, commentData)
+        val commentData = CommentData(post.id, feeds.currentTime(), user.id, text)
+        val id = postStore.createComment(commentData)
         markPostUpdated(post)
         return Comment(id, commentData)
+    }
+
+    fun deleteComment(user: User, comment: Comment): Post {
+        val post = getPost(comment.data.postId, user) ?: throw ForbiddenException()
+        if (user.id != comment.data.author && !canEditPost(post, user)) {
+            throw ForbiddenException()
+        }
+        postStore.deleteComment(comment.id)
+        return post
     }
 
     fun canEditPost(post: Post, requestingUser: User): Boolean {

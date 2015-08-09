@@ -81,7 +81,6 @@ class IntMultiMap<T> {
 }
 
 data class PersistedLike(val postId: Int, val timestamp: Long)
-data class PersistedComment(val postId: Int, val commentData: CommentData)
 
 class TestPostStore: PostStore {
     public var disposed: Boolean = false
@@ -90,7 +89,7 @@ class TestPostStore: PostStore {
     public val likes: IntMultiMap<Int> = IntMultiMap()
     private val userLikes = IntMultiMap<PersistedLike>()
     public val allPosts: MutableMap<Int, PersistedPost> = hashMapOf()
-    public val allComments: MutableMap<Int, PersistedComment> = hashMapOf()
+    public val allComments: MutableMap<Int, CommentData> = hashMapOf()
     val postComments = IntMultiMap<Pair<Int, CommentData>>()
 
     override fun createPost(data: PostData): Int {
@@ -123,12 +122,17 @@ class TestPostStore: PostStore {
         likes.removeAll(postId)
     }
 
-    override fun createComment(postId: Int, commentData: CommentData): Int {
+    override fun createComment(commentData: CommentData): Int {
         val commentId = lastId++
-        val persistedComment = PersistedComment(postId, commentData)
-        allComments.put(commentId, persistedComment)
-        postComments.put(postId, commentId to commentData)
+        allComments.put(commentId, commentData)
+        postComments.put(commentData.postId, commentId to commentData)
         return commentId
+    }
+
+    override fun deleteComment(commentId: Int) {
+        val comment = allComments[commentId] ?: throw IllegalStateException("Trying to delete a non-existing comment")
+        allComments.remove(commentId)
+        postComments.remove(comment.postId) { it.first == commentId }
     }
 
     override fun loadComments(postId: Int) = postComments.get(postId) ?: emptyList()
@@ -144,10 +148,10 @@ class TestPostStore: PostStore {
 
     override fun loadUserCommentedPosts(userId: Int): List<Int> {
         return allComments.values()
-                .filter { it.commentData.author == userId }
+                .filter { it.author == userId }
                 .groupBy { it.postId }
-                .map { it.key to it.value.maxBy { it.commentData.createdAt } }
-                .sortDescendingBy { it.second!!.commentData.createdAt }
+                .map { it.key to it.value.maxBy { it.createdAt } }
+                .sortDescendingBy { it.second!!.createdAt }
                 .map { it.first }
     }
 }

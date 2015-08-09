@@ -103,6 +103,8 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
         targetUser.homeFeed.rebuild()
     }
 
+    fun isContentBlocked(user: User): Boolean = user.id in blockedUsers || id in user.blockedUsers
+
     fun publishPost(body: String, toFeeds: IntArray = intArrayOf(id)): Post {
         val post = feeds.posts.createPost(this, toFeeds, body)
         ownPosts.addPost(post)
@@ -133,20 +135,23 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
         feeds.posts.removeLike(this, post)
         post.likes.remove(id)
         likesTimeline.removePost(post)
+        checkRemoveFromHomeFeed(post, usersWhoSawPost)
+    }
+
+    private fun checkRemoveFromHomeFeed(post: Post, usersWhoSawPost: Collection<User>) {
         usersWhoSawPost.forEach {
             val reasonToSee = it.getHomeFeedReason(post)
             if (reasonToSee != null) {
                 it.homeFeed.updateShowReason(post, reasonToSee)
-            }
-            else {
+            } else {
                 it.homeFeed.removePost(post)
             }
         }
     }
 
-    fun commentOnPost(post: Post, text: String) {
-        val commentData = feeds.posts.createComment(this, post, text)
-        post.comments.add(commentData)
+    fun commentOnPost(post: Post, text: String): Comment {
+        val comment = feeds.posts.createComment(this, post, text)
+        post.comments.add(comment)
         if (!feeds.posts.isDirect(post) && !post.isGroupPost()) {
             commentsTimeline.addPost(post)
             feeds.users.getAllUsers(subscribers).forEach {
@@ -154,6 +159,18 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
             }
         }
         bumpPostInAllTimelines(post)
+        return comment
+    }
+
+    fun deleteComment(comment: Comment) {
+        val author = feeds.users[comment.author] as User
+        val post = feeds.posts.deleteComment(this, comment)
+        val usersWhoSawPost = getUsersWhoSeePost(post)
+        post.comments.remove(comment)
+        if (post.comments.none { it.author == comment.author }) {
+            author.commentsTimeline.removePost(post)
+            author.checkRemoveFromHomeFeed(post, usersWhoSawPost)
+        }
     }
 
     fun createGroup(userName: String): Group {
@@ -200,6 +217,11 @@ public class User(feeds: Feeds, id: Int, userName: String, screenName: String, p
     private fun getHomeFeedReason(post: Post): ShowReason? {
         if (post.authorId in subscriptions) {
             return ShowReason(post.authorId, ShowReasonAction.Subscription)
+        }
+        for (commenter in post.comments.map { it.author }) {
+            if (commenter in subscriptions) {
+                return ShowReason(commenter, ShowReasonAction.Comment)
+            }
         }
         for (liker in post.likes.ids) {
             if (liker in subscriptions) {

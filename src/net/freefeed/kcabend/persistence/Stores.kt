@@ -22,7 +22,7 @@ interface UserStore {
 }
 
 data class PostData(val createdAt: Long, var updatedAt: Long, val author: Int, val toFeeds: IntArray, val body: String)
-data class CommentData(val createdAt: Long, val author: Int, val body: String)
+data class CommentData(val postId: Int, val createdAt: Long, val author: Int, val body: String)
 
 interface PostStore {
     fun createPost(data: PostData): Int
@@ -31,7 +31,8 @@ interface PostStore {
     fun removeLike(userId: Int, postId: Int)
     fun deletePostWithLikes(postId: Int)
 
-    fun createComment(postId: Int, commentData: CommentData): Int
+    fun createComment(commentData: CommentData): Int
+    fun deleteComment(commentId: Int)
 
     fun loadUserPostIds(author: Int): List<Int>
     fun loadPost(postId: Int): PostData?

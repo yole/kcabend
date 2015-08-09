@@ -1,6 +1,7 @@
 package net.freefeed.kcabend.model
 
 import org.junit.Assert.assertEquals
+import org.junit.Ignore
 import org.junit.Test
 
 class CommentsTest : AbstractModelTest() {
@@ -148,7 +149,92 @@ class CommentsTest : AbstractModelTest() {
         assertEquals("Hello World Two", user2Timeline[1].body)
     }
 
+    Test fun usersCanDeleteComments() {
+        val (user1, user2) = createUsers("Alpha", "Beta")
+        val post = user1.publishPost("Hello World")
+        val comment = user2.commentOnPost(post, "Foo")
+        user2.deleteComment(comment)
 
+        var user1Posts = user1.readOwnPosts()
+        assertEquals(0, user1Posts[0].comments.size())
 
+        reload()
+        user1Posts = user1.reload().readOwnPosts()
+        assertEquals(0, user1Posts[0].comments.size())
+    }
 
+    Test(expected = ForbiddenException::class) fun usersCantDeleteOtherUsersComments() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        val post = user1.publishPost("Hello World")
+        val comment = user2.commentOnPost(post, "Foo")
+        user3.deleteComment(comment)
+    }
+
+    Test fun uncommentedPostDisappearsFromCommentersSubscribersTimelineIfThereAreNoOtherCommenters() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        user3.subscribeTo(user2)
+        val post = user1.publishPost("Hello World")
+        val comment = user2.commentOnPost(post, "Foo")
+        assertEquals(1, user3.homeFeed.postCount)
+
+        user2.deleteComment(comment)
+        assertEquals(0, user3.homeFeed.postCount)
+        assertEquals(0, user2.commentsTimeline.postCount)
+    }
+
+    Test fun uncommentedPostRemainsInCommentsTimelineIfThereAreOtherComments() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        user3.subscribeTo(user2)
+        val post = user1.publishPost("Hello World")
+        val comment = user2.commentOnPost(post, "Foo")
+        user2.commentOnPost(post, "Bar")
+        assertEquals(1, user3.homeFeed.postCount)
+
+        user2.deleteComment(comment)
+        assertEquals(1, user3.homeFeed.postCount)
+        assertEquals(1, user2.commentsTimeline.postCount)
+    }
+
+    Test fun uncommentedPostShowsDifferentReasonIfThereIsAnotherCommenter() {
+        val (user1, user2, user3, user4) = createUsers("Alpha", "Beta", "Gamma", "Delta")
+        user3.subscribeTo(user2)
+        user3.subscribeTo(user4)
+        val post = user1.publishPost("Hello World")
+        val user2Comment = user2.commentOnPost(post, "Foo")
+        user4.commentOnPost(post, "Bar")
+
+        var user3HomePosts = user3.readHomePosts()
+        assertEquals(user2.id, user3HomePosts [0].reason?.userId)
+        assertEquals(ShowReasonAction.Comment, user3HomePosts [0].reason?.action)
+
+        user2.deleteComment(user2Comment)
+
+        user3HomePosts = user3.readHomePosts()
+        assertEquals(1, user3HomePosts.size())
+        assertEquals(user4.id, user3HomePosts [0].reason?.userId)
+        assertEquals(ShowReasonAction.Comment, user3HomePosts [0].reason?.action)
+    }
+
+    Test fun deletingAnotherUsersCommentShouldUpdateTimelinesOfThatUsersSubscribers() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        user3.subscribeTo(user2)
+        val post = user1.publishPost("Hello World")
+        val comment = user2.commentOnPost(post, "Foo")
+        assertEquals(1, user3.homeFeed.postCount)
+
+        user1.deleteComment(comment)
+        assertEquals(0, user3.homeFeed.postCount)
+        assertEquals(0, user2.commentsTimeline.postCount)
+    }
+
+    Test fun commentsOfBlockedUsersArentShown() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        user3.subscribeTo(user2)
+        user1.blockUser(user3)
+        val post = user2.publishPost("Hello World")
+        user1.commentOnPost(post, "Foo")
+
+        val posts = user3.readHomePosts()
+        assertEquals(0, posts[0].comments.size())
+    }
 }
