@@ -1,6 +1,13 @@
 package net.freefeed.kcabend.api
 
+import com.fasterxml.jackson.core.JsonFactory
+import com.fasterxml.jackson.databind.JsonNode
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.node.ArrayNode
+import com.fasterxml.jackson.databind.node.JsonNodeFactory
+import com.fasterxml.jackson.databind.node.ObjectNode
 import net.freefeed.kcabend.model.IdObject
+import java.io.StringWriter
 import kotlin.reflect.jvm.kotlin
 import kotlin.reflect.memberProperties
 
@@ -42,28 +49,36 @@ class ObjectResponse(private val owner: ObjectListResponse) {
             serializer.serialize(objectResponseForValue, propertyValue)
         }
     }
+
+    fun toJsonNode(): ObjectNode {
+        val node = JsonNodeFactory.instance.objectNode()
+        for ((key, value) in properties) {
+            node.set(key, valueToJson(value))
+        }
+        return node
+    }
 }
 
 class ObjectList(private val owner: ObjectListResponse) {
-    private val objects = hashMapOf<IdObject, ObjectResponse>()
+    private val objects = hashMapOf<Int, ObjectResponse>()
 
     fun allocateObjectResponse(obj: IdObject) : ObjectResponse? {
-        val existingResponse = objects[obj]
+        val existingResponse = objects[obj.id]
         if (existingResponse != null) {
             return null
         }
         val newResponse = ObjectResponse(owner)
-        objects[obj] = newResponse
+        objects[obj.id] = newResponse
         return newResponse
     }
 
-    fun findById(id: Int): ObjectResponse {
-        for ((idObj, value) in objects) {
-            if (idObj.id == id) {
-                return value
-            }
-        }
-        throw IllegalStateException("Can't find object with ID $id")
+    fun findById(id: Int): ObjectResponse =
+            objects[id] ?: throw java.lang.IllegalStateException("Can't find object with ID $id")
+
+    fun toJsonNode(): ArrayNode {
+        val node = JsonNodeFactory.instance.arrayNode()
+        objects.values().forEach { node.add(it.toJsonNode()) }
+        return node
     }
 }
 
@@ -85,4 +100,26 @@ public class ObjectListResponse {
     fun set(key: String, value: String) {
         rootMap.put(key, value)
     }
+
+    fun toJson(): String {
+        val factory = JsonNodeFactory.instance
+        val node = factory.objectNode()
+
+        for ((key, value) in rootMap) {
+            node.set(key, valueToJson(value))
+        }
+
+        val writer = StringWriter()
+        val mapper = ObjectMapper()
+        val generator = JsonFactory(mapper).createGenerator(writer)
+        generator.writeTree(node)
+        return writer.toString()
+    }
+}
+
+private fun valueToJson(value: Any): JsonNode = when(value) {
+    is String -> JsonNodeFactory.instance.textNode(value)
+    is ObjectResponse -> value.toJsonNode()
+    is ObjectList -> value.toJsonNode()
+    else -> throw IllegalStateException("Can't serialize value $value")
 }
