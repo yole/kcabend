@@ -16,7 +16,7 @@ public open class Timeline(val feeds: Feeds) : TimelineView {
                 .map { feeds.posts.getPost(it, requestingUser) }
                 .filterNotNull()
                 .filter(predicate)
-                .map { createView(it, requestingUser) }
+                .map { feeds.posts.createView(it, requestingUser, getShowReason(it)) }
     }
 
     fun addPost(post: Post) {
@@ -40,31 +40,7 @@ public open class Timeline(val feeds: Feeds) : TimelineView {
         }
     }
 
-    private fun createView(post: Post, requestingUser: User?): PostView =
-            PostView(post,
-                    filterLikes(post.likes, requestingUser),
-                    filterComments(post.comments, requestingUser),
-                    getShowReason(post))
-
     protected open fun getShowReason(post: Post): ShowReason? = null
-
-    private fun filterLikes(likes: UserIdList, requestingUser: User?): UserIdList {
-        if (requestingUser == null) {
-            return likes
-        }
-
-        val likers = feeds.users.getAllUsers(likes)
-        val visibleLikes = likers.filter { !it.isContentBlocked(requestingUser) }.map { it.id }
-        return UserIdList(visibleLikes)
-    }
-
-    private fun filterComments(comments: List<Comment>, requestingUser: User?): List<Comment> {
-        if (requestingUser == null) {
-            return comments
-        }
-
-        return comments.filter { !feeds.users.getUser(it.author).isContentBlocked(requestingUser) }
-    }
 }
 
 public class PostsTimeline(feeds: Feeds, val owner: Feed) : Timeline(feeds) {

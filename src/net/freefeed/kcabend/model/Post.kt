@@ -21,8 +21,11 @@ public class Post(val id: Int, val data: PostData) {
 enum class ShowReasonAction { Subscription, Like, Comment }
 data class ShowReason(val userId: Int, val action: ShowReasonAction)
 
-public class PostView(val post: Post, val likes: UserIdList, val comments: List<Comment>, val reason: ShowReason?) {
+public class PostView(val post: Post, val likes: UserIdList, val comments: List<Comment>, val reason: ShowReason?)
+    : IdObject(post.id) {
+
     val body: String get() = post.body
+    val authorId: Int get() = post.authorId
 }
 
 public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
@@ -70,6 +73,30 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
     fun getPost(id: Int, requestingUser: User?): Post? {
         var post = allPosts[id] ?: loadPost(id)
         return if (isPostVisible(post, requestingUser)) post else null
+    }
+
+    fun createView(post: Post, requestingUser: User?, showReason: ShowReason? = null): PostView =
+            PostView(post,
+                    filterLikes(post.likes, requestingUser),
+                    filterComments(post.comments, requestingUser),
+                    showReason)
+
+    private fun filterLikes(likes: UserIdList, requestingUser: User?): UserIdList {
+        if (requestingUser == null) {
+            return likes
+        }
+
+        val likers = feeds.users.getAllUsers(likes)
+        val visibleLikes = likers.filter { !it.isContentBlocked(requestingUser) }.map { it.id }
+        return UserIdList(visibleLikes)
+    }
+
+    private fun filterComments(comments: List<Comment>, requestingUser: User?): List<Comment> {
+        if (requestingUser == null) {
+            return comments
+        }
+
+        return comments.filter { !feeds.users.getUser(it.author).isContentBlocked(requestingUser) }
     }
 
     private fun loadPost(id: Int): Post {

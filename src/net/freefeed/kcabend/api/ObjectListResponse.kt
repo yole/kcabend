@@ -17,9 +17,12 @@ public abstract class ObjectSerializer<T : IdObject> {
 }
 
 class ObjectResponse(private val owner: ObjectListResponse) {
-    private val properties = hashMapOf<String, String>()
+    private val properties = hashMapOf<String, Any>()
 
-    public fun get(key: String): String = properties[key]!!
+    public fun get(key: String): String = properties[key] as String
+
+    @suppress("UNCHECKED_CAST")
+    public fun getIdList(key: String): List<String> = properties[key] as List<String>
 
     public fun serializeProperties<T>(value: T, vararg propertyNames: String) {
         val cls = value.javaClass.kotlin
@@ -44,10 +47,22 @@ class ObjectResponse(private val owner: ObjectListResponse) {
                                                      propertyValue: T,
                                                      serializer: ObjectSerializer<T>) {
         properties.put(propertyName, propertyValue.id.toString())
+        serializeObjectValue(propertyValue, serializer)
+    }
+
+    private fun serializeObjectValue<T : IdObject>(propertyValue: T, serializer: ObjectSerializer<T>) {
         val objectResponseForValue = owner.allocateObjectResponse(serializer.key, propertyValue)
         if (objectResponseForValue != null) {
             serializer.serialize(objectResponseForValue, propertyValue)
         }
+    }
+
+    public fun serializeObjectList<T : IdObject>(propertyName: String,
+                                                 propertyValue: List<T>,
+                                                 serializer: ObjectSerializer<T>) {
+        val idList = propertyValue.map { it.id.toString() }
+        properties[propertyName] = idList
+        propertyValue.forEach { serializeObjectValue(it, serializer) }
     }
 
     fun toJsonNode(): ObjectNode {
@@ -101,6 +116,12 @@ public class ObjectListResponse {
         rootMap.put(key, value)
     }
 
+    fun withRootObject<T : IdObject>(value: T, serializer: ObjectSerializer<T>) : ObjectListResponse {
+        val obj = createRootObject(serializer.key)
+        serializer.serialize(obj, value)
+        return this
+    }
+
     fun toJson(): String {
         val factory = JsonNodeFactory.instance
         val node = factory.objectNode()
@@ -121,5 +142,6 @@ private fun valueToJson(value: Any): JsonNode = when(value) {
     is String -> JsonNodeFactory.instance.textNode(value)
     is ObjectResponse -> value.toJsonNode()
     is ObjectList -> value.toJsonNode()
+    is Collection<*> -> JsonNodeFactory.instance.arrayNode().addAll(value.map { valueToJson(it!!) })
     else -> throw IllegalStateException("Can't serialize value $value")
 }

@@ -19,8 +19,10 @@ class ObjectListResponseTest {
         response["foo"] = "bar"
         val rootObj = response.createRootObject("posts")
         rootObj.set("body", "hello world")
-        rootObj.serializeObjectProperty("dummy", DummyIdObject(15, "vasya"), DummyIdObjectSerializer)
+        val dummyIdObject = DummyIdObject(15, "vasya")
+        rootObj.serializeObjectProperty("dummy", dummyIdObject, DummyIdObjectSerializer)
+        rootObj.serializeObjectList("dummies", listOf(dummyIdObject), DummyIdObjectSerializer)
         val json = response.toJson()
-        assertEquals("""{"dummy":[{"name":"vasya","id":"15"}],"posts":{"body":"hello world","dummy":"15"},"foo":"bar"}""", json)
+        assertEquals("""{"dummy":[{"name":"vasya","id":"15"}],"posts":{"body":"hello world","dummy":"15","dummies":["15"]},"foo":"bar"}""", json)
     }
 }
