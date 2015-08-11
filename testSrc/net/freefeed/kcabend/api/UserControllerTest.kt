@@ -1,8 +1,8 @@
 package net.freefeed.kcabend.api
 
 import net.freefeed.kcabend.model.Feeds
-import net.freefeed.kcabend.model.TestPostStore
-import net.freefeed.kcabend.model.TestUserStore
+import net.freefeed.kcabend.persistence.TestPostStore
+import net.freefeed.kcabend.persistence.TestUserStore
 import net.freefeed.kcabend.model.User
 import org.junit.Before
 import org.junit.Test

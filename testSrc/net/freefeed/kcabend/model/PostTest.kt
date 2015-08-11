@@ -1,8 +1,6 @@
 package net.freefeed.kcabend.model
 
-import net.freefeed.kcabend.persistence.PostData
-import net.freefeed.kcabend.persistence.FeedData
-import net.freefeed.kcabend.persistence.FeedType
+import net.freefeed.kcabend.persistence.*
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test

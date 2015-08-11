@@ -1,6 +1,4 @@
-package net.freefeed.kcabend.model
-
-import net.freefeed.kcabend.persistence.*
+package net.freefeed.kcabend.persistence
 
 data class PersistedUser(val id: Int, val data: FeedData)
 data class PersistedUserPair(val fromUser: Int, val toUser: Int)

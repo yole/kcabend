@@ -2,8 +2,8 @@ package net.freefeed.kcabend.api
 
 import net.freefeed.kcabend.model.Feeds
 import net.freefeed.kcabend.model.ForbiddenException
-import net.freefeed.kcabend.model.TestPostStore
-import net.freefeed.kcabend.model.TestUserStore
+import net.freefeed.kcabend.persistence.TestPostStore
+import net.freefeed.kcabend.persistence.TestUserStore
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Before
