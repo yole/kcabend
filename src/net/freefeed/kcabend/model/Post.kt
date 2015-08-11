@@ -12,6 +12,8 @@ public data class Comment(val id: Int, val data: CommentData) {
 public class Post(val id: Int, val data: PostData) {
     val authorId: Int get() = data.author
     val updatedAt: Long get() = data.updatedAt
+    val body: String get() = data.body
+
     val likes = UserIdList()
     val comments = arrayListOf<Comment>()
 }
@@ -20,7 +22,7 @@ enum class ShowReasonAction { Subscription, Like, Comment }
 data class ShowReason(val userId: Int, val action: ShowReasonAction)
 
 public class PostView(val post: Post, val likes: UserIdList, val comments: List<Comment>, val reason: ShowReason?) {
-    val body: String get() = post.data.body
+    val body: String get() = post.body
 }
 
 public class Posts(private val postStore: PostStore, private val feeds: Feeds) {

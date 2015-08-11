@@ -26,8 +26,8 @@ class CommentsTest : AbstractModelTest() {
     }
 
     Test(expected = ForbiddenException::class) fun usersCantCommentOnPostsTheyCantSee() {
-        val user1 = testFeeds.users.createUser("Alpha", private = true)
-        val user2 = testFeeds.users.createUser("Beta")
+        val user1 = testFeeds.users.createUser("Alpha", "alpha@frefeed.net", private = true)
+        val user2 = testFeeds.users.createUser("Beta", "beta@freefreed.net")
         val post = user1.publishPost("Hello World")
         user2.commentOnPost(post, "Foo")
     }

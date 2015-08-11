@@ -15,6 +15,8 @@ class Feeds(userStore: UserStore,
 
 }
 
+open class IdObject(public val id: Int)
+
 public class UserIdList() {
     val ids = TreeSet<Int>()
 
@@ -35,11 +37,11 @@ public class UserIdList() {
 }
 
 public open class Feed(val feeds: Feeds,
-                       val id: Int,
+                       id: Int,
                        val userName: String,
                        val screenName: String,
                        val profile: String,
-                       val private: Boolean) {
+                       val private: Boolean) : IdObject(id) {
 
     val subscribers = UserIdList()
 
@@ -235,6 +237,7 @@ public class User(feeds: Feeds, id: Int, userName: String, val hashedPassword: S
 
 public class NotFoundException(val type: String, val id: Int) : Exception("Can't find $type with ID $id")
 public class ForbiddenException() : Exception("This operation is forbidden")
+public class ValidationException(val errorMessage: String) : Exception(errorMessage)
 
 public class Group(feeds: Feeds, id: Int, userName: String, screenName: String, profile: String, private: Boolean)
     : Feed(feeds, id, userName, screenName, profile, private)
@@ -288,8 +291,9 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
     fun getAllUsers(userIdList: Collection<Int>): List<User> = userIdList.map { get(it) as User }
 
     fun createUser(userName: String,
+                   email: String,
                    hashedPassword: String? = null,
-                   private: Boolean = false) = createFeed(FeedType.User, userName, hashedPassword, private) as User
+                   private: Boolean = false) = createFeed(FeedType.User, userName, email, hashedPassword, private) as User
 
     fun createGroup(owner: User, name: String, private: Boolean = false): Group {
         val group = createFeed(FeedType.Group, name, private = private) as Group
@@ -312,8 +316,15 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
         group.admins.remove(admin.id)
     }
 
-    private fun createFeed(feedType: FeedType, name: String, hashedPassword: String? = null, private: Boolean = false): Feed {
-        val feedData = FeedData(feedType, name, hashedPassword, name, "", private)
+    private fun createFeed(feedType: FeedType,
+                           name: String,
+                           email: String? = null,
+                           hashedPassword: String? = null,
+                           private: Boolean = false): Feed {
+        if (userStore.lookupUserName(name) != null) {
+            throw ValidationException("User name must be unique")
+        }
+        val feedData = FeedData(feedType, name, email, hashedPassword, name, "", private)
         val feedId = userStore.createFeed(feedData)
         val feed = createFeedObject(feedId, feedData)
         allUsers[feed.id] = feed

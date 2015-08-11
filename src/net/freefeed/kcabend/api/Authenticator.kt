@@ -9,9 +9,9 @@ import org.mindrot.BCrypt
 import java.security.SignatureException
 
 public class Authenticator(private val feeds: Feeds, val secret: String) {
-    fun createUser(userName: String, password: String, private: Boolean = false): User {
+    fun createUser(userName: String, email: String, password: String, private: Boolean = false): User {
         val hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt())
-        return feeds.users.createUser(userName, hashedPassword, private)
+        return feeds.users.createUser(userName, email, hashedPassword, private)
     }
 
     fun verifyPassword(userName: String, password: String): String {
@@ -19,6 +19,10 @@ public class Authenticator(private val feeds: Feeds, val secret: String) {
         if (user !is User || user.hashedPassword == null || !BCrypt.checkpw(password, user.hashedPassword)) {
             throw ForbiddenException()
         }
+        return createAuthToken(user)
+    }
+
+    fun createAuthToken(user: User): String {
         return JWTSigner(secret).sign(hashMapOf("userId" to user.id))
     }
 

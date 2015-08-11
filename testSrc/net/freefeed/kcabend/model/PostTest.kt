@@ -29,12 +29,14 @@ public abstract class AbstractModelTest {
     @suppress("UNCHECKED_CAST")
     protected fun <T: Feed> T.reload(): T = testFeeds.users[id] as T
 
-    fun createUsers(vararg names: String): List<User> = names.map {
-        val user = testFeeds.users.createUser(it)
+    fun createUser(name: String, private: Boolean = false): User {
+        val user = testFeeds.users.createUser(name, name.toLowerCase() + "@freefeed.net", private = private)
         ensureLoaded(user.homeFeed)
         ensureLoaded(user.ownPosts)
-        user
+        return user
     }
+
+    fun createUsers(vararg name: String) = name.map { createUser(it) }
 
     fun User.publishPost(body: String, vararg toFeeds: Feed) = publishPost(body, toFeeds.map { it.id }.toIntArray())
     fun User.readHomePosts(): List<PostView> = homeFeed.getPosts(this)
@@ -54,7 +56,7 @@ public abstract class AbstractModelTest {
 
 public class PostTest : AbstractModelTest() {
     Test public fun testPostAppearsInUsersTimeline() {
-        val user1 = testFeeds.users.createUser("Alpha")
+        val user1 = createUser("Alpha")
         user1.publishPost("Hello World")
 
         val user1Posts = user1.ownPosts.getPosts(null)
@@ -63,13 +65,13 @@ public class PostTest : AbstractModelTest() {
     }
 
     Test public fun testPostIsPersisted() {
-        val user1 = testFeeds.users.createUser("Alpha")
+        val user1 = createUser("Alpha")
         user1.publishPost("Hello World")
         assertEquals(1, testPostStore.userPosts[user1.id]!!.size())
     }
 
     Test public fun testPostsAreLoaded() {
-        val userId = testUserStore.createFeed(FeedData(FeedType.User, "alpha", null, "Alpha", "alpha", false))
+        val userId = testUserStore.createFeed(FeedData(FeedType.User, "alpha", "alpha@freefeed.net", null, "Alpha", "alpha", false))
         val createdAt = testFeeds.currentTime()
         val postId = testPostStore.createPost(PostData(createdAt, createdAt, userId, intArrayOf(userId), "Hello World"))
 
@@ -79,7 +81,7 @@ public class PostTest : AbstractModelTest() {
     }
 
     Test public fun testPostsOfPrivateUserNotShown() {
-        val user1 = testFeeds.users.createUser("Alpha", private = true)
+        val user1 = createUser("Alpha", private = true)
         user1.publishPost("Hello World")
 
         val user1Posts = user1.ownPosts.getPosts(null)
@@ -87,8 +89,8 @@ public class PostTest : AbstractModelTest() {
     }
 
     Test public fun testPostsOfPrivateUserShownToTheirSubscribers() {
-        val user1 = testFeeds.users.createUser("Alpha", private = true)
-        val user2 = testFeeds.users.createUser("Beta")
+        val user1 = createUser("Alpha", private = true)
+        val user2 = createUser("Beta")
         user2.subscribeTo(user1)
         user1.publishPost("Hello World")
 
@@ -97,8 +99,7 @@ public class PostTest : AbstractModelTest() {
     }
 
     Test public fun testPostVisibleInSubscriberRiverOfNews() {
-        val user1 = testFeeds.users.createUser("Alpha")
-        val user2 = testFeeds.users.createUser("Beta")
+        val (user1, user2) = createUsers("Alpha", "Beta")
         user2.subscribeTo(user1)
         user1.publishPost("Hello World")
 
@@ -108,8 +109,7 @@ public class PostTest : AbstractModelTest() {
     }
 
     Test public fun riverOfNewsIsLoaded() {
-        val user1 = testFeeds.users.createUser("Alpha")
-        val user2 = testFeeds.users.createUser("Beta")
+        val (user1, user2) = createUsers("Alpha", "Beta")
         user2.subscribeTo(user1)
         user1.publishPost("Hello World")
 

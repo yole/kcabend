@@ -3,6 +3,7 @@ package net.freefeed.kcabend.persistence
 enum class FeedType { User, Group }
 data class FeedData(val feedType: FeedType,
                     val userName: String,
+                    val email: String?,
                     val hashedPassword: String?,
                     val screenName: String,
                     val profile: String,

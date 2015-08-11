@@ -7,25 +7,25 @@ import org.junit.Test
 
 public class UserTest : AbstractModelTest() {
     Test public fun userIsPersisted() {
-        testFeeds.users.createUser("Alpha")
+        testFeeds.users.createUser("Alpha", "alpha@freefeed.net")
         assertEquals(1, testUserStore.users.size())
     }
 
     Test public fun userIsLoaded() {
-        val id = testUserStore.createFeed(FeedData(FeedType.User, "alpha", null, "Alpha", "alpha", false))
+        val id = testUserStore.createFeed(FeedData(FeedType.User, "alpha", "alpha@freefeed.net", null, "Alpha", "alpha", false))
         val user = testFeeds.users[id]
         assertEquals("alpha", user.userName)
     }
 
     Test public fun findByUsername() {
-        val id = testUserStore.createFeed(FeedData(FeedType.User, "alpha", null, "Alpha", "alpha", false))
+        val id = testUserStore.createFeed(FeedData(FeedType.User, "alpha", "alpha@freefeed.net", null, "Alpha", "alpha", false))
         val user = testFeeds.users.findByUserName("alpha")
         assertEquals(id, user!!.id)
     }
 
     Test public fun subscriptionsAreLoaded() {
-        val user1 = testFeeds.users.createUser("Alpha", private = true)
-        val user2 = testFeeds.users.createUser("Beta")
+        val user1 = createUser("Alpha", private = true)
+        val user2 = createUser("Beta")
         user2.subscribeTo(user1)
 
         reload()
@@ -80,5 +80,10 @@ public class UserTest : AbstractModelTest() {
         reload()
 
         assertEquals(0, user1.blockedUsers.size())
+    }
+
+    Test(expected = ValidationException::class) public fun userNameMustBeUnique() {
+        createUser("Alpha")
+        createUser("Alpha")
     }
 }
