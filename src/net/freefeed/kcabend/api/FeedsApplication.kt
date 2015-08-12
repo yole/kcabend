@@ -11,8 +11,8 @@ import net.freefeed.kcabend.persistence.TestUserStore
 import org.jetbrains.ktor.application.*
 import org.jetbrains.ktor.http.HttpMethod
 import org.jetbrains.ktor.http.HttpStatusCode
+import org.jetbrains.ktor.http.header
 import org.jetbrains.ktor.http.status
-import org.jetbrains.ktor.locations.get
 import org.jetbrains.ktor.locations.handle
 import org.jetbrains.ktor.locations.location
 import org.jetbrains.ktor.locations.locations
@@ -20,6 +20,7 @@ import org.jetbrains.ktor.routing.*
 import kotlin.reflect.jvm.java
 
 location("/v1/users") data class user()
+location("/v1/users/whoami") data class whoami()
 location("/v1/posts") data class post()
 location("/v1/timelines/home") data class homeTimeline(val offset: Int?, val limit: Int?)
 
@@ -51,6 +52,8 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
     init {
         locations {
             jsonPost<user, CreateUserRequest>() { request -> userController.createUser(request) }
+            jsonGetWithUser<whoami>() { user, location -> userController.whoami(user) }
+
             jsonPostWithUser<post, CreatePostRequest>() { user, request -> postController.createPost(user, request) }
             jsonGetWithUser<homeTimeline>() {
                 user, location -> timelineController.home(user, location.offset ?: 0, location.limit ?: 30)

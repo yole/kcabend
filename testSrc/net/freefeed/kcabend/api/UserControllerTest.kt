@@ -45,4 +45,11 @@ public class UserControllerTest : AbstractControllerTest() {
         assertEquals("user", profile["type"])
         assertNotNull(response["authToken"])
     }
+
+    Test fun whoami() {
+        val alpha = createUser("alpha")
+        val response = userController.whoami(alpha)
+        val profile = response.getRootObject("users")
+        assertEquals("alpha", profile["username"])
+    }
 }
