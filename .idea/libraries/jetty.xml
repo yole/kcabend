@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="jetty">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/jetty-http-9.2.10.v20150310.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/jetty-io-9.2.10.v20150310.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/jetty-server-9.2.10.v20150310.jar!/" />
+      <root url="jar://$PROJECT_DIR$/lib/jetty-util-9.2.10.v20150310.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>

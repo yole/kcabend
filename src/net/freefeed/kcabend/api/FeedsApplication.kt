@@ -5,6 +5,7 @@ import com.fasterxml.jackson.module.kotlin.KotlinModule
 import net.freefeed.kcabend.model.Feeds
 import net.freefeed.kcabend.model.ForbiddenException
 import net.freefeed.kcabend.model.User
+import net.freefeed.kcabend.persistence.JdbcStore
 import net.freefeed.kcabend.persistence.TestPostStore
 import net.freefeed.kcabend.persistence.TestUserStore
 import org.jetbrains.ktor.application.*
@@ -23,8 +24,25 @@ location("/v1/posts") data class post()
 location("/v1/timelines/home") data class homeTimeline(val offset: Int?, val limit: Int?)
 
 public class FeedsApplication(config: ApplicationConfig) : Application(config) {
-    private val feeds = Feeds(TestUserStore(), TestPostStore())
-    val authenticator = Authenticator(feeds, "secret")
+    private fun ApplicationConfig.isTest() = get("ktor.deployment.environment") == "test"
+
+    private fun createFeeds(config: ApplicationConfig): Feeds {
+        if (config.isTest()) {
+            return Feeds(TestUserStore(), TestPostStore())
+        }
+
+        val jdbcStore = JdbcStore(config.get("freefeed.database.driver"),
+                config.get("freefeed.database.connection"))
+        return Feeds(jdbcStore, jdbcStore)
+    }
+
+    private fun getSecret(config: ApplicationConfig): String {
+        if (config.isTest()) return "secret"
+        return config.get("freefeed.secret")
+    }
+
+    private val feeds = createFeeds(config)
+    val authenticator = Authenticator(feeds, getSecret(config))
     private val userController = UserController(feeds, authenticator)
     private val postController = PostController(feeds)
     private val timelineController = TimelineController(feeds)

@@ -33,8 +33,8 @@ class TestUserStore : UserStore {
         subscriptions.remove(PersistedUserPair(fromUserId, toFeedId))
     }
 
-    override fun loadSubscriptions(id: Int) = subscriptions.loadToUsers(id)
-    override fun loadSubscribers(id: Int) = subscriptions.filter { it.toUser == id }.map { it.fromUser}
+    override fun loadSubscriptions(userId: Int) = subscriptions.loadToUsers(userId)
+    override fun loadSubscribers(feedId: Int) = subscriptions.filter { it.toUser == feedId }.map { it.fromUser}
 
     override fun createBlock(fromUserId: Int, toUserId: Int) {
         blocks.add(PersistedUserPair(fromUserId, toUserId))

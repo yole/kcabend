@@ -16,8 +16,8 @@ interface UserStore {
 
     fun createSubscription(fromUserId: Int, toFeedId: Int)
     fun removeSubscription(fromUserId: Int, toFeedId: Int)
-    fun loadSubscriptions(id: Int): List<Int>
-    fun loadSubscribers(id: Int): List<Int>
+    fun loadSubscriptions(userId: Int): List<Int>
+    fun loadSubscribers(feedId: Int): List<Int>
 
     fun createBlock(fromUserId: Int, toUserId: Int)
     fun removeBlock(fromUserId: Int, toUserId: Int)
