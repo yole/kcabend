@@ -24,19 +24,19 @@ CREATE TABLE users (
 
 CREATE TABLE subscriptions (
     subscriber_id int not null references users(id) on delete cascade,
-    subscription_id int not null references users(id) on delete cascade,
+    subscription_id int not null references users(id) on delete cascade
 );
 
 
 CREATE TABLE blocks (
     blocker_id int not null references users(id) on delete cascade,
-    target_id int not null references users(id) on delete cascade,
+    target_id int not null references users(id) on delete cascade
 );
 
 
 CREATE TABLE group_admins (
     group_id int not null references users(id) on delete cascade,
-    admin_id int not null references users(id) on delete cascade,
+    admin_id int not null references users(id) on delete cascade
 );
 
 
@@ -73,7 +73,7 @@ CREATE TABLE comments (
     id serial primary key,
     user_id int not null references users(id),
     post_id int not null references posts(id),
-    body string,
+    body text,
     created_at timestamp,
     updated_at timestamp,
     deleted_at timestamp
