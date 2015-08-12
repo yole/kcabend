@@ -2,6 +2,7 @@ package net.freefeed.kcabend.api
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
+import net.freefeed.kcabend.model.BadRequestException
 import net.freefeed.kcabend.model.Feeds
 import net.freefeed.kcabend.model.ForbiddenException
 import net.freefeed.kcabend.model.User
@@ -19,7 +20,8 @@ import org.jetbrains.ktor.locations.locations
 import org.jetbrains.ktor.routing.*
 import kotlin.reflect.jvm.java
 
-location("/v1/users") data class user()
+location("/v1/users") data class user(val username: String, val password: String)
+location("/v1/users") data class userRoot()
 location("/v1/users/whoami") data class whoami()
 location("/v1/posts") data class post()
 location("/v1/timelines/home") data class homeTimeline(val offset: Int?, val limit: Int?)
@@ -51,7 +53,9 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
 
     init {
         locations {
-            jsonPost<user, CreateUserRequest>() { request -> userController.createUser(request) }
+            formPost<user>() { request, location -> userController.createUser(location.username, location.password) }
+            handleOptions<userRoot>()
+
             jsonGetWithUser<whoami>() { user, location -> userController.whoami(user) }
 
             jsonPostWithUser<post, CreatePostRequest>() { user, request -> postController.createPost(user, request) }
@@ -72,6 +76,9 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
                         }
                         catch (e: ForbiddenException) {
                             status(HttpStatusCode.Forbidden)
+                        }
+                        catch (e: BadRequestException) {
+                            status(HttpStatusCode.BadRequest)
                         }
                         send()
                     }
@@ -94,6 +101,14 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
             val user = authenticator.verifyAuthToken(authToken)
 
             val response = handler(user, location)
+            content(response.toJson())
+        }
+        handleOptions<LocationT>()
+    }
+
+    inline fun RoutingEntry.formPost<reified LocationT : Any>(noinline handler: (ApplicationRequest, LocationT) -> ObjectListResponse) {
+        locationWithMethod<LocationT>(HttpMethod.Post) { request, location ->
+            val response = handler(request, location)
             content(response.toJson())
         }
         handleOptions<LocationT>()

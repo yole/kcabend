@@ -26,8 +26,7 @@ public abstract class AbstractControllerTest {
     }
 
     protected fun createUser(userName: String) : User {
-        val request = CreateUserRequest(userName, userName.toLowerCase() + "@freefeed.net", "password")
-        val createUserResponse = userController.createUser(request)
+        val createUserResponse = userController.createUser(userName, "password")
         val profile = createUserResponse.getRootObject("users")
         return feeds.users.getUser(Integer.parseInt(profile["id"]))
     }
@@ -40,7 +39,7 @@ public abstract class AbstractControllerTest {
 
 public class UserControllerTest : AbstractControllerTest() {
     Test fun createUser() {
-        val response = userController.createUser(CreateUserRequest("Alpha", "alpha@gmail.com", "password"))
+        val response = userController.createUser("Alpha", "password")
         val profile = response.getRootObject("users")
         assertEquals("user", profile["type"])
         assertNotNull(response["authToken"])

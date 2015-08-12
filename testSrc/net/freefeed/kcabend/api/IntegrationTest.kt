@@ -15,9 +15,7 @@ public class IntegrationTest {
         var authToken: String? = null
 
         withApplication<FeedsApplication> {
-            val createUserRequestResult = handleRequest(HttpMethod.Post, "/v1/users") {
-                body = """{"username": "alpha", "email": "alpha@freefeed.net", "password": "password"}"""
-            }
+            val createUserRequestResult = handleRequest(HttpMethod.Post, "/v1/users?username=alpha&password=password")
             with (createUserRequestResult) {
                 assertEquals(HttpStatusCode.OK.value, response?.status)
                 val responseJson = ObjectMapper().readValue(response?.content!!, Map::class.java)

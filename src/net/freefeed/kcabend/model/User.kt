@@ -235,6 +235,7 @@ public class User(feeds: Feeds, id: Int, userName: String, val hashedPassword: S
     }
 }
 
+public class BadRequestException() : Exception("The HTTP request isn't valid")
 public class NotFoundException(val type: String, val id: Int) : Exception("Can't find $type with ID $id")
 public class ForbiddenException() : Exception("This operation is forbidden")
 public class ValidationException(val errorMessage: String) : Exception(errorMessage)
