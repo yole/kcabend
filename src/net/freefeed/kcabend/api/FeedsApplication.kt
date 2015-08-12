@@ -85,6 +85,7 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
             val response = handler(location)
             content(response.toJson())
         }
+        handleOptions<LocationT>()
     }
 
     inline fun RoutingEntry.jsonGetWithUser<reified LocationT : Any>(noinline handler: (User, LocationT) -> ObjectListResponse) {
@@ -95,6 +96,7 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
             val response = handler(user, location)
             content(response.toJson())
         }
+        handleOptions<LocationT>()
     }
 
     inline fun RoutingEntry.jsonPost<reified LocationT : Any, reified RequestT: Any>(noinline handler: (RequestT) -> ObjectListResponse) {
@@ -103,6 +105,7 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
             val response = handler(jsonRequest)
             content(response.toJson())
         }
+        handleOptions<LocationT>()
     }
 
     inline fun RoutingEntry.jsonPostWithUser<reified LocationT : Any, reified RequestT: Any>(noinline handler: (User, RequestT) -> ObjectListResponse) {
@@ -113,6 +116,15 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
             val jsonRequest = objectMapper.readValue(request.body, RequestT::class.java)
             val response = handler(user, jsonRequest)
             content(response.toJson())
+        }
+        handleOptions<LocationT>()
+    }
+
+    inline fun RoutingEntry.handleOptions<reified LocationT : Any>() {
+        locationWithMethod<LocationT>(HttpMethod.Options) { request, location ->
+            header("Access-Control-Allow-Origin", config.get("freefeed.origin"))
+            header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
+            header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, X-Authentication-Token, Access-Control-Request-Method")
         }
     }
 }
