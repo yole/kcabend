@@ -1,0 +1,14 @@
+<component name="libraryTable">
+  <library name="ktor">
+    <CLASSES>
+      <root url="jar://$PROJECT_DIR$/lib/ktor.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="file://$USER_HOME$/jetbrains/ktor/ktor-components/src" />
+      <root url="file://$USER_HOME$/jetbrains/ktor/ktor-core/src" />
+      <root url="file://$USER_HOME$/jetbrains/ktor/ktor-jetty/src" />
+      <root url="file://$USER_HOME$/jetbrains/ktor/ktor-servlet/src" />
+    </SOURCES>
+  </library>
+</component>
