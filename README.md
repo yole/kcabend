@@ -5,7 +5,7 @@ The core logic of the application is independent of any particular framework; th
 The fact that the sample implements much of the functionality of a somewhat well-known Web service which has recently
 been shut down may or not be an accident. :)
 
-== Compiling and Running
+## Compiling and Running
 
 The application requires Kotlin plugin 0.13.511, which is newer than the latest official release, M12. To install the
 plugin:
