@@ -1,10 +1,10 @@
 package net.freefeed.kcabend.model
 
-public interface TimelineView {
-    fun getPosts(requestingUser: User?): List<PostView>
+public abstract class TimelineView(val id: String) {
+    abstract fun getPosts(requestingUser: User?): List<PostView>
 }
 
-public open class Timeline(val feeds: Feeds) : TimelineView {
+public open class Timeline(val feeds: Feeds, id: String) : TimelineView(id) {
    val postIds: MutableList<Int> = arrayListOf()
 
     public val postCount: Int get() = postIds.size()
@@ -43,25 +43,25 @@ public open class Timeline(val feeds: Feeds) : TimelineView {
     protected open fun getShowReason(post: Post): ShowReason? = null
 }
 
-public class PostsTimeline(feeds: Feeds, val owner: Feed) : Timeline(feeds) {
+public class PostsTimeline(feeds: Feeds, val owner: Feed) : Timeline(feeds, "$owner:posts") {
     init {
         postIds.addAll(feeds.posts.loadUserPostIds(owner))
     }
 }
 
-public class LikesTimeline(feeds: Feeds, val owner: User) : Timeline(feeds) {
+public class LikesTimeline(feeds: Feeds, val owner: User) : Timeline(feeds, "$owner:likes") {
     init {
         postIds.addAll(feeds.posts.loadUserLikes(owner))
     }
 }
 
-public class CommentsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds) {
+public class CommentsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds, "$owner:comments") {
     init {
         postIds.addAll(feeds.posts.loadUserCommentedPosts(owner))
     }
 }
 
-public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds) {
+public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds, "$owner:RiverOfNews") {
     private val reasons = hashMapOf<Int, ShowReason>()
 
     init {
@@ -110,7 +110,7 @@ public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds
     }
 }
 
-public class DirectMessagesTimeline(val feeds: Feeds, val owner: User) : TimelineView {
+public class DirectMessagesTimeline(val feeds: Feeds, val owner: User) : TimelineView("$owner:directs") {
     override fun getPosts(requestingUser: User?): List<PostView> {
         if (requestingUser != owner) {
             throw ForbiddenException()
