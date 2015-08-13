@@ -82,7 +82,9 @@ public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds
             }
         }
 
-        val subscriptions = owner.subscriptions.ids.map { feeds.users[it] }
+        val subscriptions = arrayListOf<Feed>(owner)
+        owner.subscriptions.ids.mapTo(subscriptions) { feeds.users[it] }
+
         subscriptions.forEach {
             unsortedPostIds.addAll(it.ownPosts.postIds)
         }

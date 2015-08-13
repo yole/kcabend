@@ -113,6 +113,9 @@ public class PostTest : AbstractModelTest() {
 
         reload()
 
+        val newUser1 = user1.reload()
+        newUser1.verifyHomePosts("Hello World")
+
         val newUser2 = user2.reload()
         val user2Posts = newUser2.homeFeed.getPosts(newUser2)
         assertEquals(1, user2Posts.size())
