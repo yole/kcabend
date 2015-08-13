@@ -145,8 +145,10 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
     }
 
     fun ApplicationResponse.sendCorsHeaders() {
-        header("Access-Control-Allow-Origin", config.get("freefeed.origin"))
-        header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
-        header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, X-Authentication-Token, Access-Control-Request-Method")
+        if (!config.isTest()) {
+            header("Access-Control-Allow-Origin", config.get("freefeed.origin"))
+            header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
+            header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, X-Authentication-Token, Access-Control-Request-Method")
+        }
     }
 }
