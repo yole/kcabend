@@ -1,6 +1,7 @@
 package net.freefeed.kcabend.api
 
 import net.freefeed.kcabend.model.Feeds
+import net.freefeed.kcabend.model.ForbiddenException
 import net.freefeed.kcabend.model.User
 
 class UserController(val feeds: Feeds, val authenticator: Authenticator) {
@@ -8,6 +9,14 @@ class UserController(val feeds: Feeds, val authenticator: Authenticator) {
         val user = authenticator.createUser(username, "", password)
         val response = ObjectListResponse().withRootObject(user, MyProfileSerializer)
         response["authToken"] = authenticator.createAuthToken(user)
+        return response
+    }
+
+    public fun signin(username: String, password: String): ObjectListResponse {
+        val user = feeds.users.findByUserName(username) as? User ?: throw ForbiddenException()
+        val authToken = authenticator.verifyPassword(user, password)
+        val response = ObjectListResponse().withRootObject(user, UserSerializer)
+        response["authToken"] = authToken
         return response
     }
 

@@ -14,8 +14,7 @@ public class Authenticator(private val feeds: Feeds, val secret: String) {
         return feeds.users.createUser(userName, email, hashedPassword, private)
     }
 
-    fun verifyPassword(userName: String, password: String): String {
-        val user = feeds.users.findByUserName(userName)
+    fun verifyPassword(user: User, password: String): String {
         if (user !is User || user.hashedPassword == null || !BCrypt.checkpw(password, user.hashedPassword)) {
             throw ForbiddenException()
         }

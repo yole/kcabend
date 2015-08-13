@@ -10,10 +10,7 @@ import net.freefeed.kcabend.persistence.JdbcStore
 import net.freefeed.kcabend.persistence.TestPostStore
 import net.freefeed.kcabend.persistence.TestUserStore
 import org.jetbrains.ktor.application.*
-import org.jetbrains.ktor.http.HttpMethod
-import org.jetbrains.ktor.http.HttpStatusCode
-import org.jetbrains.ktor.http.header
-import org.jetbrains.ktor.http.status
+import org.jetbrains.ktor.http.*
 import org.jetbrains.ktor.locations.handle
 import org.jetbrains.ktor.locations.location
 import org.jetbrains.ktor.locations.locations
@@ -23,6 +20,8 @@ import kotlin.reflect.jvm.java
 location("/v1/users") data class user(val username: String, val password: String)
 location("/v1/users") data class userRoot()
 location("/v1/users/whoami") data class whoami()
+location("/v1/session") data class session(val username: String, val password: String)
+location("/v1/session") data class sessionRoot()
 location("/v1/posts") data class post()
 location("/v1/timelines/home") data class homeTimeline(val offset: Int?, val limit: Int?)
 
@@ -55,6 +54,9 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
         locations {
             formPost<user>() { request, location -> userController.createUser(location.username, location.password) }
             handleOptions<userRoot>()
+
+            formPost<session> { request, location -> userController.signin(location.username, location.password) }
+            handleOptions<sessionRoot>()
 
             jsonGetWithUser<whoami>() { user, location -> userController.whoami(user) }
 
@@ -109,7 +111,11 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
     inline fun RoutingEntry.formPost<reified LocationT : Any>(noinline handler: (ApplicationRequest, LocationT) -> ObjectListResponse) {
         locationWithMethod<LocationT>(HttpMethod.Post) { request, location ->
             val response = handler(request, location)
-            content(response.toJson())
+            contentType(ContentType("application", "json"))
+            contentStream {
+                response.toJson(this)
+                close()
+            }
         }
         handleOptions<LocationT>()
     }

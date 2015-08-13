@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.fasterxml.jackson.databind.node.ObjectNode
 import net.freefeed.kcabend.model.IdObject
 import java.io.StringWriter
+import java.io.Writer
 import kotlin.reflect.jvm.kotlin
 import kotlin.reflect.memberProperties
 
@@ -123,6 +124,12 @@ public class ObjectListResponse {
     }
 
     fun toJson(): String {
+        val writer = StringWriter()
+        toJson(writer)
+        return writer.toString()
+    }
+
+    fun toJson(writer: Writer) {
         val factory = JsonNodeFactory.instance
         val node = factory.objectNode()
 
@@ -130,11 +137,9 @@ public class ObjectListResponse {
             node.set(key, valueToJson(value))
         }
 
-        val writer = StringWriter()
         val mapper = ObjectMapper()
         val generator = JsonFactory(mapper).createGenerator(writer)
         generator.writeTree(node)
-        return writer.toString()
     }
 }
 

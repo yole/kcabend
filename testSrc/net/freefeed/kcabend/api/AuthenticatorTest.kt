@@ -21,25 +21,25 @@ public class AuthenticatorTest {
     }
 
     Test fun verifyPassword() {
-        authenticator.createUser("Alpha", "alpha@freefeed.net", "password")
-        assertNotNull(authenticator.verifyPassword("Alpha", "password"))
+        val user = authenticator.createUser("Alpha", "alpha@freefeed.net", "password")
+        assertNotNull(authenticator.verifyPassword(user, "password"))
     }
 
     Test(expected = ForbiddenException::class) fun dontVerifyWrongPassword() {
-        authenticator.createUser("Alpha", "alpha@freefeed.net", "password")
-        authenticator.verifyPassword("Alpha", "Shmassword")
+        val user = authenticator.createUser("Alpha", "alpha@freefeed.net", "password")
+        authenticator.verifyPassword(user, "Shmassword")
     }
 
     Test fun verifyAuthToken() {
         val user = authenticator.createUser("Alpha", "alpha@freefeed.net", "password")
-        val authToken = authenticator.verifyPassword("Alpha", "password")
+        val authToken = authenticator.verifyPassword(user, "password")
         val loggedInUser = authenticator.verifyAuthToken(authToken)
         assertEquals(loggedInUser.id, user.id)
     }
 
     Test(expected = ForbiddenException::class) fun dontVerifyWrongAuthToken() {
-        authenticator.createUser("Alpha", "alpha@freefeed.net", "password")
-        val authToken = authenticator.verifyPassword("Alpha", "password")
+        val user = authenticator.createUser("Alpha", "alpha@freefeed.net", "password")
+        val authToken = authenticator.verifyPassword(user, "password")
         authenticator.verifyAuthToken("!!" + authToken)
     }
 }
