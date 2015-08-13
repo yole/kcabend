@@ -1,5 +1,6 @@
 package net.freefeed.kcabend.api
 
+import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
 import net.freefeed.kcabend.model.BadRequestException
@@ -48,7 +49,9 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
     private val userController = UserController(feeds, authenticator)
     private val postController = PostController(feeds)
     private val timelineController = TimelineController(feeds)
-    val objectMapper = ObjectMapper().registerModule(KotlinModule())
+    val objectMapper = ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            .registerModule(KotlinModule())
 
     init {
         locations {
