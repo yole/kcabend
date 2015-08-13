@@ -59,6 +59,7 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
             handleOptions<sessionRoot>()
 
             jsonGetWithUser<whoami>() { user, location -> userController.whoami(user) }
+            handleOptions<whoami>()
 
             jsonPostWithUser<post, CreatePostRequest>() { user, request -> postController.createPost(user, request) }
             jsonGetWithUser<homeTimeline>() {
@@ -73,6 +74,7 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
                 handle<T> { location ->
                     respond {
                         try {
+                            sendCorsHeaders()
                             body(this@handle, location)
                             status(HttpStatusCode.OK)
                         }
@@ -111,11 +113,8 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
     inline fun RoutingEntry.formPost<reified LocationT : Any>(noinline handler: (ApplicationRequest, LocationT) -> ObjectListResponse) {
         locationWithMethod<LocationT>(HttpMethod.Post) { request, location ->
             val response = handler(request, location)
-            contentType(ContentType("application", "json"))
-            contentStream {
-                response.toJson(this)
-                close()
-            }
+            contentType(ContentType.Application.Json)
+            contentStream { response.toJson(this) }
         }
         handleOptions<LocationT>()
     }
@@ -143,9 +142,13 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
 
     inline fun RoutingEntry.handleOptions<reified LocationT : Any>() {
         locationWithMethod<LocationT>(HttpMethod.Options) { request, location ->
-            header("Access-Control-Allow-Origin", config.get("freefeed.origin"))
-            header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
-            header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, X-Authentication-Token, Access-Control-Request-Method")
+            sendCorsHeaders()
         }
+    }
+
+    fun ApplicationResponse.sendCorsHeaders() {
+        header("Access-Control-Allow-Origin", config.get("freefeed.origin"))
+        header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,OPTIONS")
+        header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, X-Authentication-Token, Access-Control-Request-Method")
     }
 }
