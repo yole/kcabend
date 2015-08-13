@@ -12,7 +12,7 @@ plugin:
 
  * Install the latest EAP build of IntelliJ IDEA Community Edition version 15
  * Go to Settings | Plugins | Browse Repositories | Manage Repositories
- * Add [this repository](https://teamcity.jetbrains.com/repository/download/bt345/.lastSuccessful/updatePlugins.xml) to the list
+ * Add [this repository](https://teamcity.jetbrains.com/guestAuth/repository/download/bt345/.lastSuccessful/updatePlugins.xml) to the list
  * Select Kotlin in the list from the list, press the "Update" button.
 
 To build the application, open the checked out directory as an IntelliJ IDEA project. Use the provided run configurations
