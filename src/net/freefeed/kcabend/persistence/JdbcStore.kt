@@ -164,7 +164,7 @@ class JdbcStore(val driverClass: String, val connectionString: String): UserStor
     }
 
     override fun loadUserCommentedPosts(userId: Int): List<Int> {
-        return connection.executeListQuery("select distinct post_id from comments where user_id=? order by created_at desc", userId) {
+        return connection.executeListQuery("select distinct post_id, created_at from comments where user_id=? order by created_at desc", userId) {
             it.getInt("post_id")
         }
     }
