@@ -70,7 +70,7 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
         }
     }
 
-    inline fun RoutingEntry.locationWithMethod<reified T : Any>(method: String, noinline body: ApplicationResponse.(ApplicationRequest, T) -> Unit) {
+    inline fun RoutingEntry.locationWithMethod<reified T : Any>(method: String, noinline body: ApplicationResponse.(ApplicationRequest, T) -> ApplicationRequestStatus) {
         location(T::class) {
             methodParam(method) {
                 handle<T> { location ->
@@ -78,15 +78,15 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
                         try {
                             sendCorsHeaders()
                             body(this@handle, location)
-                            status(HttpStatusCode.OK)
                         }
                         catch (e: ForbiddenException) {
                             status(HttpStatusCode.Forbidden)
+                            send()
                         }
                         catch (e: BadRequestException) {
                             status(HttpStatusCode.BadRequest)
+                            send()
                         }
-                        send()
                     }
                 }
             }
@@ -95,16 +95,14 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
 
     inline fun RoutingEntry.jsonGet<reified LocationT : Any>(noinline handler: (LocationT) -> ObjectListResponse) {
         locationWithMethod<LocationT>(HttpMethod.Get) { request, location ->
-            val response = handler(location)
-            content(response.toJson())
+            sendJson(handler(location))
         }
         handleOptions<LocationT>()
     }
 
     inline fun RoutingEntry.jsonGetWithUser<reified LocationT : Any>(noinline handler: (User, LocationT) -> ObjectListResponse) {
         locationWithMethod<LocationT>(HttpMethod.Get) { request, location ->
-            val authToken = request.header("X-Authentication-Token") ?: throw ForbiddenException()
-            val user = authenticator.verifyAuthToken(authToken)
+            val user = request.requireAuthentication()
             sendJson(handler(user, location))
         }
         handleOptions<LocationT>()
@@ -117,20 +115,9 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
         handleOptions<LocationT>()
     }
 
-    inline fun RoutingEntry.jsonPost<reified LocationT : Any, reified RequestT: Any>(noinline handler: (RequestT) -> ObjectListResponse) {
-        locationWithMethod<LocationT>(HttpMethod.Post) { request, location ->
-            val jsonRequest = objectMapper.readValue(request.body, RequestT::class.java)
-            val response = handler(jsonRequest)
-            content(response.toJson())
-        }
-        handleOptions<LocationT>()
-    }
-
     inline fun RoutingEntry.jsonPostWithUser<reified LocationT : Any, reified RequestT: Any>(noinline handler: (User, RequestT) -> ObjectListResponse) {
         locationWithMethod<LocationT>(HttpMethod.Post) { request, location ->
-            val authToken = request.header("X-Authentication-Token") ?: throw ForbiddenException()
-            val user = authenticator.verifyAuthToken(authToken)
-
+            val user = request.requireAuthentication()
             val jsonRequest = objectMapper.readValue(request.body, RequestT::class.java)
             sendJson(handler(user, jsonRequest))
         }
@@ -139,13 +126,22 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
 
     inline fun RoutingEntry.handleOptions<reified LocationT : Any>() {
         locationWithMethod<LocationT>(HttpMethod.Options) { request, location ->
+            status(HttpStatusCode.OK)
             sendCorsHeaders()
+            send()
         }
     }
 
-    fun ApplicationResponse.sendJson(response: ObjectListResponse) {
+    fun ApplicationRequest.requireAuthentication(): User {
+        val authToken = header("X-Authentication-Token") ?: throw ForbiddenException()
+        return authenticator.verifyAuthToken(authToken)
+    }
+
+    fun ApplicationResponse.sendJson(response: ObjectListResponse): ApplicationRequestStatus {
+        status(HttpStatusCode.OK)
         contentType(ContentType.Application.Json)
         contentStream { response.toJson(this) }
+        return send()
     }
 
     fun ApplicationResponse.sendCorsHeaders() {
