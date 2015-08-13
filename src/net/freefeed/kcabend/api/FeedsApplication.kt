@@ -59,7 +59,6 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
             handleOptions<sessionRoot>()
 
             jsonGetWithUser<whoami>() { user, location -> userController.whoami(user) }
-            handleOptions<whoami>()
 
             jsonPostWithUser<post, CreatePostRequest>() { user, request -> postController.createPost(user, request) }
             jsonGetWithUser<homeTimeline>() {
@@ -103,18 +102,14 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
         locationWithMethod<LocationT>(HttpMethod.Get) { request, location ->
             val authToken = request.header("X-Authentication-Token") ?: throw ForbiddenException()
             val user = authenticator.verifyAuthToken(authToken)
-
-            val response = handler(user, location)
-            content(response.toJson())
+            sendJson(handler(user, location))
         }
         handleOptions<LocationT>()
     }
 
     inline fun RoutingEntry.formPost<reified LocationT : Any>(noinline handler: (ApplicationRequest, LocationT) -> ObjectListResponse) {
         locationWithMethod<LocationT>(HttpMethod.Post) { request, location ->
-            val response = handler(request, location)
-            contentType(ContentType.Application.Json)
-            contentStream { response.toJson(this) }
+            sendJson(handler(request, location))
         }
         handleOptions<LocationT>()
     }
@@ -134,8 +129,7 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
             val user = authenticator.verifyAuthToken(authToken)
 
             val jsonRequest = objectMapper.readValue(request.body, RequestT::class.java)
-            val response = handler(user, jsonRequest)
-            content(response.toJson())
+            sendJson(handler(user, jsonRequest))
         }
         handleOptions<LocationT>()
     }
@@ -144,6 +138,11 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
         locationWithMethod<LocationT>(HttpMethod.Options) { request, location ->
             sendCorsHeaders()
         }
+    }
+
+    fun ApplicationResponse.sendJson(response: ObjectListResponse) {
+        contentType(ContentType.Application.Json)
+        contentStream { response.toJson(this) }
     }
 
     fun ApplicationResponse.sendCorsHeaders() {
