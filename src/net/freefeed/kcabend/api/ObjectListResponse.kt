@@ -141,6 +141,10 @@ public class ObjectListResponse {
         val generator = JsonFactory(mapper).createGenerator(writer)
         generator.writeTree(node)
     }
+
+    companion object {
+        val Empty = ObjectListResponse()
+    }
 }
 
 private fun valueToJson(value: Any): JsonNode = when(value) {

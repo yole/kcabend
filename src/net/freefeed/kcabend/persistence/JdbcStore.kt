@@ -98,7 +98,7 @@ class JdbcStore(val driverClass: String, val connectionString: String): UserStor
     }
 
     override fun updatePost(id: Int, data: PostData) {
-        connection.executeUpdate("update posts set updated_at=? where id=?", data.updatedAt, id)
+        connection.executeUpdate("update posts set updated_at=? where id=?", Date(data.updatedAt), id)
     }
 
     override fun createLike(userId: Int, postId: Int, timestamp: Long) {
@@ -145,7 +145,7 @@ class JdbcStore(val driverClass: String, val connectionString: String): UserStor
     }
 
     override fun loadLikes(postId: Int): List<Int> {
-        return connection.executeListQuery("select user_id from likes where post_id=?", postId) { it.getInt("id")}
+        return connection.executeListQuery("select user_id from likes where post_id=?", postId) { it.getInt("user_id")}
     }
 
     override fun loadComments(postId: Int): List<Pair<Int, CommentData>> {

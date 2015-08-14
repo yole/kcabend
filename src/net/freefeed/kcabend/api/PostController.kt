@@ -1,9 +1,6 @@
 package net.freefeed.kcabend.api
 
-import net.freefeed.kcabend.model.Feeds
-import net.freefeed.kcabend.model.Post
-import net.freefeed.kcabend.model.PostView
-import net.freefeed.kcabend.model.User
+import net.freefeed.kcabend.model.*
 
 class CreatePostMeta(val feeds: Array<String>)
 class CreatePostPost(val body: String)
@@ -14,7 +11,33 @@ class PostController(val feeds: Feeds) {
 
     fun createPost(requestingUser: User, request: CreatePostRequest): ObjectListResponse {
         val post = requestingUser.publishPost(request.post.body)
-        return ObjectListResponse().withRootObject(feeds.posts.createView(post, requestingUser), serializer)
+        return respondWithPostView(post, requestingUser)
+    }
+
+    fun getPost(requestingUser: User?, id: String): ObjectListResponse {
+        val post = findPostByStringId(requestingUser, id)
+        return respondWithPostView(post, requestingUser)
+    }
+
+    fun like(requestingUser: User, id: String): ObjectListResponse {
+        val post = findPostByStringId(requestingUser, id)
+        requestingUser.likePost(post)
+        return ObjectListResponse.Empty
+    }
+
+    private fun findPostByStringId(requestingUser: User?, id: String): Post {
+        val intId = try {
+            Integer.parseInt(id)
+        } catch(e: NumberFormatException) {
+            throw BadRequestException()
+        }
+
+        return feeds.posts.getPost(intId, requestingUser) ?: throw ForbiddenException()
+    }
+
+    private fun respondWithPostView(post: Post, requestingUser: User?): ObjectListResponse {
+        val postView = feeds.posts.createView(post, requestingUser)
+        return ObjectListResponse().withRootObject(postView, serializer)
     }
 }
 
@@ -25,5 +48,6 @@ class PostSerializer(val feeds: Feeds) : ObjectSerializer<PostView>() {
         val author = feeds.users.getUser(value.authorId)
         response.serializeProperties(value, "id", "body")
         response.serializeObjectProperty("createdBy", author, UserSerializer)
+        response.serializeObjectList("likes", value.likes, UserSerializer)
     }
 }

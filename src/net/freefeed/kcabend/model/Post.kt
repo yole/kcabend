@@ -21,7 +21,7 @@ public class Post(val id: Int, val data: PostData) {
 enum class ShowReasonAction { Subscription, Like, Comment }
 data class ShowReason(val userId: Int, val action: ShowReasonAction)
 
-public class PostView(val post: Post, val likes: UserIdList, val comments: List<Comment>, val reason: ShowReason?)
+public class PostView(val post: Post, val likes: List<User>, val comments: List<Comment>, val reason: ShowReason?)
     : IdObject(post.id) {
 
     val body: String get() = post.body
@@ -81,14 +81,12 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
                     filterComments(post.comments, requestingUser),
                     showReason)
 
-    private fun filterLikes(likes: UserIdList, requestingUser: User?): UserIdList {
-        if (requestingUser == null) {
-            return likes
-        }
-
+    private fun filterLikes(likes: UserIdList, requestingUser: User?): List<User> {
         val likers = feeds.users.getAllUsers(likes)
-        val visibleLikes = likers.filter { !it.isContentBlocked(requestingUser) }.map { it.id }
-        return UserIdList(visibleLikes)
+        if (requestingUser == null) {
+            return likers
+        }
+        return likers.filter { !it.isContentBlocked(requestingUser) }
     }
 
     private fun filterComments(comments: List<Comment>, requestingUser: User?): List<Comment> {

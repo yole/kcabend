@@ -23,7 +23,13 @@ location("/v1/users") data class userRoot()
 location("/v1/users/whoami") data class whoami()
 location("/v1/session") data class session(val username: String, val password: String)
 location("/v1/session") data class sessionRoot()
-location("/v1/posts") data class post()
+
+location("/v1/posts") data class post() {
+    location("/{id}") data class id(val id: String) {
+        location("/like") data class like(val postId: id)
+    }
+}
+
 location("/v1/timelines/home") data class homeTimeline(val offset: Int?, val limit: Int?)
 
 public class FeedsApplication(config: ApplicationConfig) : Application(config) {
@@ -55,24 +61,27 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
 
     init {
         locations {
-            formPost<user>() { request, location -> userController.createUser(location.username, location.password) }
+            formPost<user>() { location -> userController.createUser(location.username, location.password) }
             handleOptions<userRoot>()
 
-            formPost<session> { request, location -> userController.signin(location.username, location.password) }
+            formPost<session> { location -> userController.signin(location.username, location.password) }
             handleOptions<sessionRoot>()
 
             jsonGetWithUser<whoami>() { user, location -> userController.whoami(user) }
 
             jsonPostWithUser<post, CreatePostRequest>() { user, request -> postController.createPost(user, request) }
+            jsonGetWithOptionalUser<post.id>() { user, location -> postController.getPost(user, location.id) }
+            formPostWithUser<post.id.like>() { user, location -> postController.like(user, location.postId.id )}
+
             jsonGetWithUser<homeTimeline>() {
                 user, location -> timelineController.home(user, location.offset ?: 0, location.limit ?: 30)
             }
         }
     }
 
-    inline fun RoutingEntry.locationWithMethod<reified T : Any>(method: String, noinline body: ApplicationResponse.(ApplicationRequest, T) -> ApplicationRequestStatus) {
+    inline fun RoutingEntry.locationWithMethod<reified T : Any>(method: HttpMethod, noinline body: ApplicationResponse.(ApplicationRequest, T) -> ApplicationRequestStatus) {
         location(T::class) {
-            methodParam(method) {
+            method(method) {
                 handle<T> { location ->
                     respond {
                         try {
@@ -108,9 +117,25 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
         handleOptions<LocationT>()
     }
 
-    inline fun RoutingEntry.formPost<reified LocationT : Any>(noinline handler: (ApplicationRequest, LocationT) -> ObjectListResponse) {
+    inline fun RoutingEntry.jsonGetWithOptionalUser<reified LocationT : Any>(noinline handler: (User?, LocationT) -> ObjectListResponse) {
+        locationWithMethod<LocationT>(HttpMethod.Get) { request, location ->
+            val user = request.allowAuthentication()
+            sendJson(handler(user, location))
+        }
+        handleOptions<LocationT>()
+    }
+
+    inline fun RoutingEntry.formPost<reified LocationT : Any>(noinline handler: (LocationT) -> ObjectListResponse) {
         locationWithMethod<LocationT>(HttpMethod.Post) { request, location ->
-            sendJson(handler(request, location))
+            sendJson(handler(location))
+        }
+        handleOptions<LocationT>()
+    }
+
+    inline fun RoutingEntry.formPostWithUser<reified LocationT : Any>(noinline handler: (User, LocationT) -> ObjectListResponse) {
+        locationWithMethod<LocationT>(HttpMethod.Post) { request, location ->
+            val user = request.requireAuthentication()
+            sendJson(handler(user, location))
         }
         handleOptions<LocationT>()
     }
@@ -134,6 +159,11 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
 
     fun ApplicationRequest.requireAuthentication(): User {
         val authToken = header("X-Authentication-Token") ?: throw ForbiddenException()
+        return authenticator.verifyAuthToken(authToken)
+    }
+
+    fun ApplicationRequest.allowAuthentication(): User? {
+        val authToken = header("X-Authentication-Token") ?: return null
         return authenticator.verifyAuthToken(authToken)
     }
 
