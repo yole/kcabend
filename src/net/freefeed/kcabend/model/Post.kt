@@ -5,8 +5,10 @@ import net.freefeed.kcabend.persistence.PostData
 import net.freefeed.kcabend.persistence.PostStore
 import java.util.HashMap
 
-public data class Comment(val id: Int, val data: CommentData) {
+public data class Comment(id: Int, val data: CommentData) : IdObject(id) {
+    val body: String get() = data.body
     val author: Int get() = data.author
+    val createdAt: Long get() = data.createdAt
 }
 
 public class Post(val id: Int, val data: PostData) {

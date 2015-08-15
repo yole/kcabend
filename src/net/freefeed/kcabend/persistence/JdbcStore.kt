@@ -123,7 +123,7 @@ class JdbcStore(val driverClass: String, val connectionString: String): UserStor
                 "user_id" to commentData.author,
                 "post_id" to commentData.postId,
                 "body" to commentData.body,
-                "createdAt" to Date(commentData.createdAt))
+                "created_at" to Date(commentData.createdAt))
     }
 
     override fun deleteComment(commentId: Int) {

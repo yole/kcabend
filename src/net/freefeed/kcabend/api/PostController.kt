@@ -25,7 +25,7 @@ class PostController(val feeds: Feeds) {
         return ObjectListResponse.Empty
     }
 
-    private fun findPostByStringId(requestingUser: User?, id: String): Post {
+    public fun findPostByStringId(requestingUser: User?, id: String): Post {
         val intId = try {
             Integer.parseInt(id)
         } catch(e: NumberFormatException) {
@@ -42,6 +42,8 @@ class PostController(val feeds: Feeds) {
 }
 
 class PostSerializer(val feeds: Feeds) : ObjectSerializer<PostView>() {
+    private val commentSerializer = CommentSerializer(feeds)
+
     override val key: String get() = "posts"
 
     override fun serialize(response: ObjectResponse, value: PostView) {
@@ -49,5 +51,6 @@ class PostSerializer(val feeds: Feeds) : ObjectSerializer<PostView>() {
         response.serializeProperties(value, "id", "body", "omittedLikes")
         response.serializeObjectProperty("createdBy", author, UserSerializer)
         response.serializeObjectList("likes", value.likes, UserSerializer)
+        response.serializeObjectList("comments", value.comments, commentSerializer)
     }
 }

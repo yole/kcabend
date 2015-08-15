@@ -15,6 +15,7 @@ public abstract class AbstractControllerTest {
     protected var authenticator: Authenticator by Delegates.notNull()
     protected var userController: UserController by Delegates.notNull()
     protected var postController: PostController by Delegates.notNull()
+    protected var commentsController: CommentsController by Delegates.notNull()
     protected var timelineController: TimelineController by Delegates.notNull()
 
     Before fun setUp() {
@@ -22,6 +23,7 @@ public abstract class AbstractControllerTest {
         authenticator = Authenticator(feeds, "Secret")
         userController = UserController(feeds, authenticator)
         postController = PostController(feeds)
+        commentsController = CommentsController(feeds, postController)
         timelineController = TimelineController(feeds)
     }
 
@@ -34,6 +36,11 @@ public abstract class AbstractControllerTest {
     protected fun createPost(requestingUser: User, body: String): String {
         val response = postController.createPost(requestingUser, CreatePostRequest(CreatePostPost(body), null))
         return response.getRootObject("posts")["id"]
+    }
+
+    protected fun createComment(requestingUser: User, postId: String, body: String) {
+        commentsController.createComment(requestingUser,
+                CreateCommentRequest(CreateCommentComment(body, postId)))
     }
 }
 

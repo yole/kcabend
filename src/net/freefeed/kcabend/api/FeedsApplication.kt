@@ -30,6 +30,8 @@ location("/v1/posts") data class post() {
     }
 }
 
+location("/v1/comments") data class comment()
+
 location("/v1/timelines/home") data class homeTimeline(val offset: Int?, val limit: Int?)
 
 public class FeedsApplication(config: ApplicationConfig) : Application(config) {
@@ -54,6 +56,7 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
     val authenticator = Authenticator(feeds, getSecret(config))
     private val userController = UserController(feeds, authenticator)
     private val postController = PostController(feeds)
+    private val commentsController = CommentsController(feeds, postController)
     private val timelineController = TimelineController(feeds)
     val objectMapper = ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
@@ -71,10 +74,17 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
 
             jsonPostWithUser<post, CreatePostRequest>() { user, request -> postController.createPost(user, request) }
             jsonGetWithOptionalUser<post.id>() { user, location -> postController.getPost(user, location.id) }
-            formPostWithUser<post.id.like>() { user, location -> postController.like(user, location.postId.id )}
 
-            jsonGetWithUser<homeTimeline>() {
-                user, location -> timelineController.home(user, location.offset ?: 0, location.limit ?: 30)
+            formPostWithUser<post.id.like>() { user, location ->
+                postController.like(user, location.postId.id )
+            }
+
+            jsonPostWithUser<comment, CreateCommentRequest>() { user, request ->
+                commentsController.createComment(user, request)
+            }
+
+            jsonGetWithUser<homeTimeline>() { user, location ->
+                timelineController.home(user, location.offset ?: 0, location.limit ?: 30)
             }
         }
     }
