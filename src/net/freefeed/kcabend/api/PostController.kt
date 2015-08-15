@@ -46,7 +46,7 @@ class PostSerializer(val feeds: Feeds) : ObjectSerializer<PostView>() {
 
     override fun serialize(response: ObjectResponse, value: PostView) {
         val author = feeds.users.getUser(value.authorId)
-        response.serializeProperties(value, "id", "body")
+        response.serializeProperties(value, "id", "body", "omittedLikes")
         response.serializeObjectProperty("createdBy", author, UserSerializer)
         response.serializeObjectList("likes", value.likes, UserSerializer)
     }

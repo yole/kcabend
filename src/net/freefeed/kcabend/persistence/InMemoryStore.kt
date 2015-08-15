@@ -82,13 +82,13 @@ class IntMultiMap<T> {
     fun removeAll(id: Int) = data.remove(id)
 }
 
-data class PersistedLike(val postId: Int, val timestamp: Long)
+data class PersistedLike(val userId: Int, val postId: Int, val timestamp: Long)
 
 class TestPostStore: PostStore {
     public var disposed: Boolean = false
     private var lastId: Int = 1
     public val userPosts: IntMultiMap<PersistedPost> = IntMultiMap()
-    public val likes: IntMultiMap<Int> = IntMultiMap()
+    public val likes: IntMultiMap<PersistedLike> = IntMultiMap()
     private val userLikes = IntMultiMap<PersistedLike>()
     public val allPosts: MutableMap<Int, PersistedPost> = hashMapOf()
     public val allComments: MutableMap<Int, CommentData> = hashMapOf()
@@ -109,12 +109,13 @@ class TestPostStore: PostStore {
     }
 
     override fun createLike(userId: Int, postId: Int, timestamp: Long) {
-        likes.put(postId, userId)
-        userLikes.put(userId, PersistedLike(postId, timestamp))
+        val persistedLike = PersistedLike(userId, postId, timestamp)
+        likes.put(postId, persistedLike)
+        userLikes.put(userId, persistedLike)
     }
 
     override fun removeLike(userId: Int, postId: Int) {
-        likes.remove(postId, userId)
+        likes.remove(postId) { it.userId == userId }
         userLikes.remove(userId) { it.postId == postId }
     }
 
@@ -144,7 +145,10 @@ class TestPostStore: PostStore {
     }
 
     override fun loadPost(postId: Int): PostData? = allPosts[postId]?.data
-    override fun loadLikes(postId: Int) = likes[postId] ?: emptyList()
+
+    override fun loadLikesSortedByTimestamp(postId: Int) =
+            likes[postId]?.sortDescendingBy { it.timestamp }?.map { it.userId } ?: emptyList()
+
     override fun loadUserLikesSortedByTimestamp(userId: Int): List<Int> =
             userLikes[userId]?.sortDescendingBy { it.timestamp }?.map { it.postId } ?: emptyList()
 

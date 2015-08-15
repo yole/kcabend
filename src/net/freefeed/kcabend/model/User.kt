@@ -123,7 +123,7 @@ public class User(feeds: Feeds, id: Int, userName: String, val hashedPassword: S
 
     fun likePost(post: Post) {
         feeds.posts.createLike(this, post)
-        post.likes.add(id)
+        post.likes.add(0, id)
         if (!feeds.posts.isDirect(post) && !post.isGroupPost()) {
             likesTimeline.addPost(post)
             feeds.users.getAllUsers(subscribers).forEach {
@@ -136,7 +136,7 @@ public class User(feeds: Feeds, id: Int, userName: String, val hashedPassword: S
     fun unlikePost(post: Post) {
         val usersWhoSawPost = getUsersWhoSeePost(post)
         feeds.posts.removeLike(this, post)
-        post.likes.remove(id)
+        post.likes.remove(post.likes.indexOf(id))
         likesTimeline.removePost(post)
         checkRemoveFromHomeFeed(post, usersWhoSawPost)
     }
@@ -226,7 +226,7 @@ public class User(feeds: Feeds, id: Int, userName: String, val hashedPassword: S
                 return ShowReason(commenter, ShowReasonAction.Comment)
             }
         }
-        for (liker in post.likes.ids) {
+        for (liker in post.likes) {
             if (liker in subscriptions) {
                 return ShowReason(liker, ShowReasonAction.Like)
             }

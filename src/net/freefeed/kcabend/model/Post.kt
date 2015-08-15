@@ -14,14 +14,19 @@ public class Post(val id: Int, val data: PostData) {
     val updatedAt: Long get() = data.updatedAt
     val body: String get() = data.body
 
-    val likes = UserIdList()
+    // Likes sorted by timestamp (newest first)
+    val likes = arrayListOf<Int>()
     val comments = arrayListOf<Comment>()
 }
 
 enum class ShowReasonAction { Subscription, Like, Comment }
 data class ShowReason(val userId: Int, val action: ShowReasonAction)
 
-public class PostView(val post: Post, val likes: List<User>, val comments: List<Comment>, val reason: ShowReason?)
+public class PostView(val post: Post,
+                      val likes: List<User>,
+                      val comments: List<Comment>,
+                      val reason: ShowReason?,
+                      val omittedLikes: Int)
     : IdObject(post.id) {
 
     val body: String get() = post.body
@@ -75,18 +80,34 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
         return if (isPostVisible(post, requestingUser)) post else null
     }
 
-    fun createView(post: Post, requestingUser: User?, showReason: ShowReason? = null): PostView =
-            PostView(post,
-                    filterLikes(post.likes, requestingUser),
-                    filterComments(post.comments, requestingUser),
-                    showReason)
+    fun createView(post: Post, requestingUser: User?, showReason: ShowReason? = null, maxLikes: Int = 4): PostView {
+        val (filteredLikes, omittedLikes) = filterLikes(post.likes, requestingUser, maxLikes)
+        return PostView(post,
+                filteredLikes,
+                filterComments(post.comments, requestingUser),
+                showReason,
+                omittedLikes)
+    }
 
-    private fun filterLikes(likes: UserIdList, requestingUser: User?): List<User> {
+    private fun filterLikes(likes: List<Int>, requestingUser: User?, maxLikes: Int): Pair<List<User>, Int> {
         val likers = feeds.users.getAllUsers(likes)
+        val filteredLikes: List<User>
         if (requestingUser == null) {
-            return likers
+            filteredLikes = likers
+        } else {
+            filteredLikes = likers.filter { !it.isContentBlocked(requestingUser) }.toArrayList()
+
+            val requestingUserIndex = filteredLikes.indexOf(requestingUser)
+            if (requestingUserIndex > 0) {
+                filteredLikes.remove(requestingUserIndex)
+                filteredLikes.add(0, requestingUser)
+            }
         }
-        return likers.filter { !it.isContentBlocked(requestingUser) }
+
+        if (filteredLikes.size() <= maxLikes) {
+            return filteredLikes to 0
+        }
+        return filteredLikes.take(maxLikes) to (filteredLikes.size() - maxLikes)
     }
 
     private fun filterComments(comments: List<Comment>, requestingUser: User?): List<Comment> {
@@ -100,7 +121,7 @@ public class Posts(private val postStore: PostStore, private val feeds: Feeds) {
     private fun loadPost(id: Int): Post {
         val data = postStore.loadPost(id) ?: throw NotFoundException("Post", id)
         val post = Post(id, data)
-        post.likes.set(postStore.loadLikes(id))
+        post.likes.addAll(postStore.loadLikesSortedByTimestamp(id))
         post.comments.addAll(postStore.loadComments(id).map { Comment(it.first, it.second) })
         allPosts[id] = post
         return post

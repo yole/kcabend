@@ -144,8 +144,8 @@ class JdbcStore(val driverClass: String, val connectionString: String): UserStor
         }
     }
 
-    override fun loadLikes(postId: Int): List<Int> {
-        return connection.executeListQuery("select user_id from likes where post_id=?", postId) { it.getInt("user_id")}
+    override fun loadLikesSortedByTimestamp(postId: Int): List<Int> {
+        return connection.executeListQuery("select user_id from likes where post_id=? order by created_at desc", postId) { it.getInt("user_id")}
     }
 
     override fun loadComments(postId: Int): List<Pair<Int, CommentData>> {

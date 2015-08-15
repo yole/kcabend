@@ -208,4 +208,28 @@ public class LikesTest : AbstractModelTest() {
         val posts = user3.readHomePosts()
         assertEquals(0, posts[0].likes.size())
     }
+
+    Test fun omittedLikes() {
+        val (user1, user2, user3) = createUsers("Alpha", "Beta", "Gamma")
+        val post = user1.publishPost("Hello World")
+        user1.likePost(post)
+        user2.likePost(post)
+        user3.likePost(post)
+
+        var postView = testFeeds.posts.createView(post, user1, maxLikes = 2)
+        assertEquals(2, postView.likes.size())
+        assertEquals(user1.id, postView.likes[0].id)
+        assertEquals(user3.id, postView.likes[1].id)
+        assertEquals(1, postView.omittedLikes)
+
+        reload()
+
+        val newUser1 = user1.reload()
+        val newPost = testFeeds.posts.getPost(post.id, newUser1)!!
+        postView = testFeeds.posts.createView(newPost, newUser1, maxLikes = 2)
+        assertEquals(2, postView.likes.size())
+        assertEquals(user1.id, postView.likes[0].id)
+        assertEquals(user3.id, postView.likes[1].id)
+        assertEquals(1, postView.omittedLikes)
+    }
 }

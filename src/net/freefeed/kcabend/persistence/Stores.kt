@@ -43,7 +43,7 @@ interface PostStore {
 
     fun loadUserPostIds(author: Int): List<Int>
     fun loadPost(postId: Int): PostData?
-    fun loadLikes(postId: Int): List<Int>
+    fun loadLikesSortedByTimestamp(postId: Int): List<Int>
     fun loadComments(postId: Int): List<Pair<Int, CommentData>>
     fun loadUserLikesSortedByTimestamp(userId: Int): List<Int>
     fun loadUserCommentedPosts(userId: Int): List<Int>
