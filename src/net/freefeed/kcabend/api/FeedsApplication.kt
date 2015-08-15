@@ -3,10 +3,7 @@ package net.freefeed.kcabend.api
 import com.fasterxml.jackson.databind.DeserializationFeature
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.kotlin.KotlinModule
-import net.freefeed.kcabend.model.BadRequestException
-import net.freefeed.kcabend.model.Feeds
-import net.freefeed.kcabend.model.ForbiddenException
-import net.freefeed.kcabend.model.User
+import net.freefeed.kcabend.model.*
 import net.freefeed.kcabend.persistence.JdbcStore
 import net.freefeed.kcabend.persistence.TestPostStore
 import net.freefeed.kcabend.persistence.TestUserStore
@@ -33,6 +30,7 @@ location("/v1/posts") data class post() {
 location("/v1/comments") data class comment()
 
 location("/v1/timelines/home") data class homeTimeline(val offset: Int?, val limit: Int?)
+location("/v1/timelines/{username}") data class postsTimeline(val username: String, val offset: Int?, val limit: Int?)
 
 public class FeedsApplication(config: ApplicationConfig) : Application(config) {
     private fun ApplicationConfig.isTest() = get("ktor.deployment.environment") == "test"
@@ -86,6 +84,9 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
             jsonGetWithUser<homeTimeline>() { user, location ->
                 timelineController.home(user, location.offset ?: 0, location.limit ?: 30)
             }
+            jsonGetWithOptionalUser<postsTimeline>() { user, location ->
+                timelineController.posts(user, location.username, location.offset ?: 0, location.limit ?: 30)
+            }
         }
     }
 
@@ -104,6 +105,16 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
                         }
                         catch (e: BadRequestException) {
                             status(HttpStatusCode.BadRequest)
+                            send()
+                        }
+                        catch (e: ValidationException) {
+                            status(HttpStatusCode.BadRequest)
+                            content(e.errorMessage)
+                            send()
+                        }
+                        catch (e: NotFoundException) {
+                            status(HttpStatusCode.NotFound)
+                            content(e.getMessage().toString())
                             send()
                         }
                     }

@@ -31,4 +31,14 @@ class TimelineControllerTest : AbstractControllerTest() {
         val comment = response.getObject("comments", Integer.parseInt(idList[0]))
         assertEquals("Foo", comment["body"])
     }
+
+    Test fun userPosts() {
+        val user = createUser("alpha")
+        val postId = createPost(user, "Hello World")
+        val response = timelineController.posts(null, "alpha", 0, 30)
+
+        val timelines = response.getRootObject("timelines")
+        val idList = timelines.getIdList("posts")
+        assertEquals(1, idList.size())
+    }
 }

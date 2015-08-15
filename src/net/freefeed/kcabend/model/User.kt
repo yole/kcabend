@@ -236,7 +236,7 @@ public class User(feeds: Feeds, id: Int, userName: String, val hashedPassword: S
 }
 
 public class BadRequestException() : Exception("The HTTP request isn't valid")
-public class NotFoundException(val type: String, val id: Int) : Exception("Can't find $type with ID $id")
+public class NotFoundException(val type: String, val id: Any) : Exception("Can't find $type with ID $id")
 public class ForbiddenException() : Exception("This operation is forbidden")
 public class ValidationException(val errorMessage: String) : Exception(errorMessage)
 
@@ -276,6 +276,9 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
         val id = userStore.lookupUserName(userName) ?: return null
         return get(id)
     }
+
+    fun getByUserName(userName: String): Feed =
+        findByUserName(userName) ?: throw NotFoundException("feed", userName)
 
     private fun createFeedObject(id: Int, data: FeedData): Feed = when(data.feedType) {
         FeedType.User -> User(feeds, id, data.userName, data.hashedPassword, data.screenName, data.profile, data.private)
