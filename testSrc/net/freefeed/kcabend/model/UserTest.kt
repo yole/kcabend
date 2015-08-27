@@ -36,6 +36,11 @@ public class UserTest : AbstractModelTest() {
         assertEquals(1, newUser1.subscribers.size())
     }
 
+    Test(expected = ValidationException::class) public fun subscribeToSelf() {
+        val user1 = createUser("alpha")
+        user1.subscribeTo(user1)
+    }
+
     Test public fun unsubscribe() {
         val (user1, user2) = createUsers("Alpha", "Beta")
         user2.subscribeTo(user1)

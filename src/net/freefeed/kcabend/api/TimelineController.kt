@@ -16,6 +16,7 @@ public class TimelineController(val feeds: Feeds) {
         val response = ObjectListResponse()
         val timelineResponse = response.createRootObject("timelines")
         timelineResponse.serializeProperties(timeline, "id")
+        timelineResponse.serializeObjectProperty("user", timeline.owner, UserSerializer)
         timelineResponse.serializeObjectList("posts", posts, PostSerializer(feeds))
         return response
     }

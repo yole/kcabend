@@ -15,6 +15,7 @@ import kotlin.reflect.memberProperties
 public abstract class ObjectSerializer<T : IdObject> {
     abstract val key: String get
     abstract fun serialize(response: ObjectResponse, value: T)
+    open fun serializedId(value: T): String = value.id.toString()
 }
 
 class ObjectResponse(private val owner: ObjectListResponse) {
@@ -54,6 +55,7 @@ class ObjectResponse(private val owner: ObjectListResponse) {
     private fun serializeObjectValue<T : IdObject>(propertyValue: T, serializer: ObjectSerializer<T>) {
         val objectResponseForValue = owner.allocateObjectResponse(serializer.key, propertyValue)
         if (objectResponseForValue != null) {
+            objectResponseForValue.set("id", serializer.serializedId(propertyValue))
             serializer.serialize(objectResponseForValue, propertyValue)
         }
     }
@@ -61,7 +63,7 @@ class ObjectResponse(private val owner: ObjectListResponse) {
     public fun serializeObjectList<T : IdObject>(propertyName: String,
                                                  propertyValue: List<T>,
                                                  serializer: ObjectSerializer<T>) {
-        val idList = propertyValue.map { it.id.toString() }
+        val idList = propertyValue.map { serializer.serializedId(it) }
         properties[propertyName] = idList
         propertyValue.forEach { serializeObjectValue(it, serializer) }
     }
@@ -119,6 +121,7 @@ public class ObjectListResponse {
 
     fun withRootObject<T : IdObject>(value: T, serializer: ObjectSerializer<T>) : ObjectListResponse {
         val obj = createRootObject(serializer.key)
+        obj["id"] = serializer.serializedId(value)
         serializer.serialize(obj, value)
         return this
     }

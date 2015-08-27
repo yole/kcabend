@@ -62,6 +62,9 @@ public class User(feeds: Feeds, id: Int, userName: String, val hashedPassword: S
     val directMessagesTimeline: TimelineView = DirectMessagesTimeline(feeds, this)
 
     fun subscribeTo(targetFeed: Feed) {
+        if (targetFeed.id == id) {
+            throw ValidationException("You can't subscribe to yourself")
+        }
         if (targetFeed.id in blockedUsers || (targetFeed is User && id in targetFeed.blockedUsers)) {
             throw ForbiddenException()
         }

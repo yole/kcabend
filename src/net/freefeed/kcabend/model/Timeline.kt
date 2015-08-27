@@ -1,10 +1,10 @@
 package net.freefeed.kcabend.model
 
-public abstract class TimelineView(val id: String) {
+public abstract class TimelineView(val owner: Feed, val id: String) {
     abstract fun getPosts(requestingUser: User?): List<PostView>
 }
 
-public open class Timeline(val feeds: Feeds, id: String) : TimelineView(id) {
+public open class Timeline(val feeds: Feeds, owner: Feed, id: String) : TimelineView(owner, id) {
    val postIds: MutableList<Int> = arrayListOf()
 
     public val postCount: Int get() = postIds.size()
@@ -43,25 +43,25 @@ public open class Timeline(val feeds: Feeds, id: String) : TimelineView(id) {
     protected open fun getShowReason(post: Post): ShowReason? = null
 }
 
-public class PostsTimeline(feeds: Feeds, val owner: Feed) : Timeline(feeds, "$owner:posts") {
+public class PostsTimeline(feeds: Feeds, owner: Feed) : Timeline(feeds, owner, "$owner:posts") {
     init {
         postIds.addAll(feeds.posts.loadUserPostIds(owner))
     }
 }
 
-public class LikesTimeline(feeds: Feeds, val owner: User) : Timeline(feeds, "$owner:likes") {
+public class LikesTimeline(feeds: Feeds, owner: User) : Timeline(feeds, owner, "$owner:likes") {
     init {
         postIds.addAll(feeds.posts.loadUserLikes(owner))
     }
 }
 
-public class CommentsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds, "$owner:comments") {
+public class CommentsTimeline(feeds: Feeds, owner: User) : Timeline(feeds, owner, "$owner:comments") {
     init {
         postIds.addAll(feeds.posts.loadUserCommentedPosts(owner))
     }
 }
 
-public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds, "$owner:RiverOfNews") {
+public class RiverOfNewsTimeline(feeds: Feeds, val ownerUser: User) : Timeline(feeds, ownerUser, "$ownerUser:RiverOfNews") {
     private val reasons = hashMapOf<Int, ShowReason>()
 
     init {
@@ -82,8 +82,8 @@ public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds
             }
         }
 
-        val subscriptions = arrayListOf<Feed>(owner)
-        owner.subscriptions.ids.mapTo(subscriptions) { feeds.users[it] }
+        val subscriptions = arrayListOf(owner)
+        ownerUser.subscriptions.ids.mapTo(subscriptions) { feeds.users[it] }
 
         subscriptions.forEach {
             unsortedPostIds.addAll(it.ownPosts.postIds)
@@ -93,7 +93,7 @@ public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds
             addPostsFromTimeline(user, user.commentsTimeline, ShowReasonAction.Comment)
         }
 
-        postIds.addAll(unsortedPostIds.toList().sortDescendingBy { feeds.posts.getPost(it, owner)?.updatedAt ?: 0 })
+        postIds.addAll(unsortedPostIds.toList().sortDescendingBy { feeds.posts.getPost(it, ownerUser)?.updatedAt ?: 0 })
     }
 
     fun addPost(post: Post, reason: ShowReason?) {
@@ -112,7 +112,7 @@ public class RiverOfNewsTimeline(feeds: Feeds, val owner: User) : Timeline(feeds
     }
 }
 
-public class DirectMessagesTimeline(val feeds: Feeds, val owner: User) : TimelineView("$owner:directs") {
+public class DirectMessagesTimeline(val feeds: Feeds, owner: User) : TimelineView(owner, "$owner:directs") {
     override fun getPosts(requestingUser: User?): List<PostView> {
         if (requestingUser != owner) {
             throw ForbiddenException()

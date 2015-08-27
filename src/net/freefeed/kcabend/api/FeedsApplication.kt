@@ -18,6 +18,8 @@ import kotlin.reflect.jvm.java
 location("/v1/users") data class user(val username: String, val password: String)
 location("/v1/users") data class userRoot()
 location("/v1/users/whoami") data class whoami()
+location("/v1/users/{username}/subscribe") data class subscribe(val username: String)
+
 location("/v1/session") data class session(val username: String, val password: String)
 location("/v1/session") data class sessionRoot()
 
@@ -69,6 +71,8 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
             handleOptions<sessionRoot>()
 
             jsonGetWithUser<whoami>() { user, location -> userController.whoami(user) }
+
+            formPostWithUser<subscribe> { user, location -> userController.subscribe(user, location.username) }
 
             jsonPostWithUser<post, CreatePostRequest>() { user, request -> postController.createPost(user, request) }
             jsonGetWithOptionalUser<post.id>() { user, location -> postController.getPost(user, location.id) }

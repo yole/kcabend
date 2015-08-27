@@ -58,4 +58,21 @@ public class UserControllerTest : AbstractControllerTest() {
         val profile = response.getRootObject("users")
         assertEquals("alpha", profile["username"])
     }
+
+    Test fun subscribe() {
+        val alpha = createUser("alpha")
+        val beta = createUser("beta")
+        val response = userController.subscribe(alpha, "beta")
+        val profile = response.getRootObject("users")
+        val profileSubscriptions = profile.getIdList("subscriptions")
+        assertEquals(1, profileSubscriptions.size())
+        assertEquals("${alpha.id}:${beta.id}", profileSubscriptions[0])
+
+        val subscriptions = response.getObject("subscriptions", beta.id)
+        assertEquals(profileSubscriptions[0], subscriptions["id"])
+        assertEquals(beta.id.toString(), subscriptions["user"])
+
+        val subscribers = response.getObject("subscribers", beta.id)
+        assertEquals(beta.id.toString(), subscribers["id"])
+    }
 }
