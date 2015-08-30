@@ -98,31 +98,23 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
         location(T::class) {
             method(method) {
                 handle<T> { location ->
-                    respond {
-                        try {
-                            sendCorsHeaders()
-                            body(this@handle, location)
-                        }
-                        catch (e: ForbiddenException) {
-                            status(HttpStatusCode.Forbidden)
-                            send()
-                        }
-                        catch (e: BadRequestException) {
-                            status(HttpStatusCode.BadRequest)
-                            send()
-                        }
-                        catch (e: ValidationException) {
-                            status(HttpStatusCode.BadRequest)
-                            content(e.errorMessage)
-                            send()
-                        }
-                        catch (e: NotFoundException) {
-                            status(HttpStatusCode.NotFound)
-                            content(e.getMessage().toString())
-                            send()
-                        }
+                    try {
+                        response.sendCorsHeaders()
+                        response.body(request, location)
                     }
-                }
+                    catch (e: ForbiddenException) {
+                        response.sendError(HttpStatusCode.Forbidden.value, e.getMessage() ?: "Forbidden")
+                    }
+                    catch (e: BadRequestException) {
+                        response.sendError(HttpStatusCode.BadRequest.value, e.getMessage() ?: "Bad request")
+                    }
+                    catch (e: ValidationException) {
+                        response.sendError(HttpStatusCode.BadRequest.value, e.errorMessage)
+                    }
+                    catch (e: NotFoundException) {
+                        response.sendError(HttpStatusCode.NotFound.value, e.getMessage() ?: "Not found")
+                    }
+            }
             }
         }
     }
@@ -178,7 +170,7 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
         locationWithMethod<LocationT>(HttpMethod.Options) { request, location ->
             status(HttpStatusCode.OK)
             sendCorsHeaders()
-            send()
+            sendText("")
         }
     }
 
@@ -194,9 +186,7 @@ public class FeedsApplication(config: ApplicationConfig) : Application(config) {
 
     fun ApplicationResponse.sendJson(response: ObjectListResponse): ApplicationRequestStatus {
         status(HttpStatusCode.OK)
-        contentType(ContentType.Application.Json)
-        contentStream { response.toJson(this) }
-        return send()
+        return sendText(ContentType.Application.Json, response.toJson())
     }
 
     fun ApplicationResponse.sendCorsHeaders() {

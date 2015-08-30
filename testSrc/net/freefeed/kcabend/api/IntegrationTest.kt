@@ -24,8 +24,8 @@ public class IntegrationTest {
             val createUserRequestResult = handleRequest(HttpMethod.Post, "/v1/users?username=alpha&password=password")
             var userId: String = ""
             with (createUserRequestResult) {
-                assertEquals(HttpStatusCode.OK.value, response?.status)
-                val responseJson = ObjectMapper().readValue(response?.content!!, Map::class.java)
+                assertEquals(HttpStatusCode.OK.value, response.status())
+                val responseJson = ObjectMapper().readValue(response.content!!, Map::class.java)
 
                 authToken = responseJson["authToken"] as String
                 assertNotNull(authToken)
@@ -36,11 +36,11 @@ public class IntegrationTest {
             var postId: String = ""
             val createPostRequestResult = handleRequest(HttpMethod.Post, "/v1/posts") {
                 body = """{"post": {"body": "Hello World"}}"""
-                headers.put("X-Authentication-Token", authToken!!)
+                addHeader("X-Authentication-Token", authToken!!)
             }
             with (createPostRequestResult) {
-                assertEquals(HttpStatusCode.OK.value, response?.status)
-                val responseJson = ObjectMapper().readValue(response?.content!!, Map::class.java)
+                assertEquals(HttpStatusCode.OK.value, response.status())
+                val responseJson = ObjectMapper().readValue(response.content!!, Map::class.java)
                 assertEquals("Hello World", responseJson.getByPath("posts", "body"))
                 postId = responseJson.getByPath("posts", "id")
             }
@@ -57,11 +57,11 @@ public class IntegrationTest {
 
     private fun TestApplicationHost.handleAuthenticatedRequest(method: HttpMethod, url: String): Map<*, *> {
         val timelineRequestResult = handleRequest(method, url) {
-            headers.put("X-Authentication-Token", authToken!!)
+            addHeader("X-Authentication-Token", authToken!!)
         }
         with (timelineRequestResult) {
-            assertEquals(HttpStatusCode.OK.value, response?.status)
-            return ObjectMapper().readValue(response?.content!!, Map::class.java)
+            assertEquals(HttpStatusCode.OK.value, response.status())
+            return ObjectMapper().readValue(response.content!!, Map::class.java)
         }
     }
 
