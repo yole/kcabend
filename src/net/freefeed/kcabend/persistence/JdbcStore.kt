@@ -86,7 +86,21 @@ class JdbcStore(val driverClass: String, val connectionString: String): UserStor
 
     override fun loadAdmins(groupId: Int): List<Int> {
         return connection.executeListQuery(
-                "select admin_id from group_admins where group_od=?", groupId) { it.getInt("admin_id") }
+                "select admin_id from group_admins where group_id=?", groupId) { it.getInt("admin_id") }
+    }
+
+    override fun createSubscriptionRequest(fromUserId: Int, toUserId: Int) {
+        connection.executeInsert("subscription_requests", "subscriber_id" to fromUserId, "target_id" to toUserId)
+    }
+
+    override fun removeSubscriptionRequest(fromUserId: Int, toUserId: Int) {
+        connection.executeUpdate("delete from subscription_requests where subscriber_id=? and target_id=?",
+                fromUserId, toUserId)
+    }
+
+    override fun loadSubscriptionRequests(targetUser: Int): List<Int> {
+        return connection.executeListQuery(
+                "select subscriber_id from subscription_requests where target_id=? order by created_at desc", targetUser) { it.getInt("subscriber_id")}
     }
 
     override fun createPost(data: PostData): Int {

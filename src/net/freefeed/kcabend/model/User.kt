@@ -44,9 +44,9 @@ public open class Feed(val feeds: Feeds,
                        val private: Boolean) : IdObject(id) {
 
     val subscribers = UserIdList()
+    val subscriptionRequests = UserIdList()
 
     val ownPosts: Timeline by lazy { PostsTimeline(feeds, this) }
-
 }
 
 public class User(feeds: Feeds, id: Int, userName: String, val hashedPassword: String?,
@@ -71,6 +71,10 @@ public class User(feeds: Feeds, id: Int, userName: String, val hashedPassword: S
         if (targetFeed.id in subscriptions) return
 
         feeds.users.createSubscription(this, targetFeed)
+        addSubscription(targetFeed)
+    }
+
+    private fun addSubscription(targetFeed: Feed) {
         subscriptions.add(targetFeed.id)
         targetFeed.subscribers.add(id)
         homeFeed.rebuild()
@@ -107,6 +111,24 @@ public class User(feeds: Feeds, id: Int, userName: String, val hashedPassword: S
 
         homeFeed.rebuild()
         targetUser.homeFeed.rebuild()
+    }
+
+    fun sendSubscriptionRequest(targetUser: Feed) {
+        if (targetUser is User && isContentBlocked(targetUser)) {
+            throw ForbiddenException()
+        }
+
+        targetUser.subscriptionRequests.add(id)
+        feeds.users.createSubscriptionRequest(this, targetUser)
+    }
+
+    fun acceptSubscriptionRequest(user: User, targetFeed: Feed) {
+        feeds.users.acceptSubscriptionRequest(user, targetFeed, this)
+        user.addSubscription(targetFeed)
+    }
+
+    fun rejectSubscriptionRequest(user: User, targetFeed: Feed) {
+        feeds.users.removeSubscriptionRequest(user, targetFeed, this)
     }
 
     fun isContentBlocked(user: User): Boolean = user.id in blockedUsers || id in user.blockedUsers
@@ -179,8 +201,8 @@ public class User(feeds: Feeds, id: Int, userName: String, val hashedPassword: S
         }
     }
 
-    fun createGroup(userName: String): Group {
-        val group = feeds.users.createGroup(this, userName)
+    fun createGroup(userName: String, private: Boolean = false): Group {
+        val group = feeds.users.createGroup(this, userName, private)
         subscribeTo(group)
         return group
     }
@@ -262,6 +284,7 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
         if (data != null) {
             val loadedFeed = createFeedObject(id, data)
             loadedFeed.subscribers.set(userStore.loadSubscribers(id))
+            loadedFeed.subscriptionRequests.set(userStore.loadSubscriptionRequests(id))
             if (loadedFeed is User) {
                 loadedFeed.subscriptions.set(userStore.loadSubscriptions(id))
                 loadedFeed.blockedUsers.set(userStore.loadBlocks(id))
@@ -323,6 +346,31 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
         group.admins.remove(admin.id)
     }
 
+    fun acceptSubscriptionRequest(user: User, targetFeed: Feed, requestingUser: User) {
+        removeSubscriptionRequest(user,  targetFeed, requestingUser)
+        userStore.createSubscription(user.id, targetFeed.id)
+    }
+
+    fun removeSubscriptionRequest(user: User, targetFeed: Feed, requestingUser: User) {
+        if (user.id !in targetFeed.subscriptionRequests) {
+            throw BadRequestException()
+        }
+        checkCanManageSubscriptionRequests(targetFeed, requestingUser)
+        targetFeed.subscriptionRequests.remove(user.id)
+        userStore.removeSubscriptionRequest(user.id, targetFeed.id)
+    }
+
+    private fun checkCanManageSubscriptionRequests(targetFeed: Feed, requestingUser: User) {
+        val canManage = if (targetFeed is Group)
+            requestingUser.id in targetFeed.admins
+        else
+            requestingUser == targetFeed
+
+        if (!canManage) {
+            throw ForbiddenException()
+        }
+    }
+
     private fun createFeed(feedType: FeedType,
                            name: String,
                            email: String? = null,
@@ -338,8 +386,21 @@ public class Users(private val userStore: UserStore, val feeds: Feeds) {
         return feed
     }
 
-    fun createSubscription(fromUser: User, toUser: Feed) = userStore.createSubscription(fromUser.id, toUser.id)
+    fun createSubscription(fromUser: User, toFeed: Feed) {
+        if (toFeed.private && !(toFeed is Group && fromUser.id in toFeed.admins)) {
+            throw ForbiddenException()
+        }
+        userStore.createSubscription(fromUser.id, toFeed.id)
+    }
+
     fun removeSubscription(fromUser: User, toUser: Feed) = userStore.removeSubscription(fromUser.id, toUser.id)
+
+    fun createSubscriptionRequest(fromUser: User, toUser: Feed) {
+        if (!toUser.private) {
+            throw BadRequestException()
+        }
+        userStore.createSubscriptionRequest(fromUser.id, toUser.id)
+    }
 
     fun createBlock(fromUser: User, toUser: User) = userStore.createBlock(fromUser.id, toUser.id)
     fun removeBlock(fromUser: User, toUser: User) = userStore.removeBlock(fromUser.id, toUser.id)

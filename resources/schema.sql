@@ -40,6 +40,12 @@ CREATE TABLE group_admins (
 );
 
 
+CREATE TABLE subscription_requests (
+    subscriber_id_id int not null references users(id) on delete cascade,
+    target_id int not null references users(id) on delete cascade,
+    created_at timestamp not null default now()
+);
+
 
 -- Posts
 -- - body

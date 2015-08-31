@@ -3,6 +3,8 @@ package net.freefeed.kcabend.model
 import net.freefeed.kcabend.persistence.FeedData
 import net.freefeed.kcabend.persistence.FeedType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Ignore
 import org.junit.Test
 
 public class UserTest : AbstractModelTest() {
@@ -24,8 +26,7 @@ public class UserTest : AbstractModelTest() {
     }
 
     Test public fun subscriptionsAreLoaded() {
-        val user1 = createUser("Alpha", private = true)
-        val user2 = createUser("Beta")
+        val (user1, user2) = createUsers("Alpha", "Beta")
         user2.subscribeTo(user1)
 
         reload()
@@ -39,6 +40,12 @@ public class UserTest : AbstractModelTest() {
     Test(expected = ValidationException::class) public fun subscribeToSelf() {
         val user1 = createUser("alpha")
         user1.subscribeTo(user1)
+    }
+
+    Test(expected = ForbiddenException::class) public fun subscribeToPrivateUser() {
+        val user1 = createUser("Alpha", private = true)
+        val user2 = createUser("Beta")
+        user2.subscribeTo(user1)
     }
 
     Test public fun unsubscribe() {
@@ -90,5 +97,56 @@ public class UserTest : AbstractModelTest() {
     Test(expected = ValidationException::class) public fun userNameMustBeUnique() {
         createUser("Alpha")
         createUser("Alpha")
+    }
+
+    Test public fun userCanSendSubscriptionRequest() {
+        val user1 = createUser("alpha", private = true)
+        val user2 = createUser("beta")
+
+        user2.sendSubscriptionRequest(user1)
+        assertTrue(user2.id in user1.subscriptionRequests)
+
+        reload()
+        val user1new = user1.reload()
+        assertTrue(user2.id in user1new.subscriptionRequests)
+    }
+
+    Test public fun userCanAcceptSubscriptionRequest() {
+        val user1 = createUser("alpha", private = true)
+        val user2 = createUser("beta")
+
+        user2.sendSubscriptionRequest(user1)
+        user1.acceptSubscriptionRequest(user2, user1)
+        assertTrue(user2.id !in user1.subscriptionRequests)
+        assertTrue(user2.id in user1.subscribers)
+
+        reload()
+        val user1new = user1.reload()
+        assertTrue(user2.id !in user1new.subscriptionRequests)
+    }
+
+    Test public fun userCanRejectSubscriptionRequest() {
+        val user1 = createUser("alpha", private = true)
+        val user2 = createUser("beta")
+
+        user2.sendSubscriptionRequest(user1)
+        user1.rejectSubscriptionRequest(user2, user1)
+        assertTrue(user2.id !in user1.subscriptionRequests)
+        assertTrue(user2.id !in user1.subscribers)
+    }
+
+    Test(expected = ForbiddenException::class) fun userCantAcceptOtherUsersSubscriptionRequests() {
+        val user1 = createUser("alpha", private = true)
+        val user2 = createUser("beta")
+
+        user2.sendSubscriptionRequest(user1)
+        user2.acceptSubscriptionRequest(user2, user1)
+    }
+
+    Test(expected = ForbiddenException::class) fun blockedUserCantSendSubscriptionRequest() {
+        val user1 = createUser("alpha", private = true)
+        val user2 = createUser("beta")
+        user1.blockUser(user2)
+        user2.sendSubscriptionRequest(user1)
     }
 }

@@ -26,6 +26,10 @@ interface UserStore {
     fun createAdmin(groupId: Int, adminId: Int)
     fun removeAdmin(groupId: Int, adminId: Int)
     fun loadAdmins(groupId: Int): List<Int>
+
+    fun createSubscriptionRequest(fromUserId: Int, toUserId: Int)
+    fun removeSubscriptionRequest(fromUserId: Int, toUserId: Int)
+    fun loadSubscriptionRequests(targetUser: Int): List<Int>
 }
 
 data class PostData(val createdAt: Long, var updatedAt: Long, val author: Int, val toFeeds: IntArray, val body: String)

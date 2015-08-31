@@ -89,7 +89,8 @@ public class PostTest : AbstractModelTest() {
     Test public fun testPostsOfPrivateUserShownToTheirSubscribers() {
         val user1 = createUser("Alpha", private = true)
         val user2 = createUser("Beta")
-        user2.subscribeTo(user1)
+        user2.sendSubscriptionRequest(user1)
+        user1.acceptSubscriptionRequest(user2, user1)
         user1.publishPost("Hello World")
 
         val user1Posts = user1.ownPosts.getPosts(user2)

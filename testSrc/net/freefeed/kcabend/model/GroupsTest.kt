@@ -119,6 +119,16 @@ public class GroupsTest : AbstractModelTest() {
         user1.removeGroupAdmin(group, user1)
     }
 
+    Test fun adminCanAcceptSubscriptionRequestForGroup() {
+        val (user1, user2) = createUsers("Alpha", "Beta")
+        val group = user1.createGroup("Piglets", private = true)
+
+        user2.sendSubscriptionRequest(group)
+        user1.acceptSubscriptionRequest(user2, group)
+
+        assertEquals(2, group.subscribers.size())
+    }
+
     // TODO: Who can delete a post if it's posted into multiple groups?
     // If a post is cross-posted, does an admin simply delete it from a group rather than removing it entirely?
 }

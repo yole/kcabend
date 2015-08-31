@@ -4,6 +4,7 @@ data class PersistedUser(val id: Int, val data: FeedData)
 data class PersistedUserPair(val fromUser: Int, val toUser: Int)
 
 fun List<PersistedUserPair>.loadToUsers(fromUser: Int): List<Int> = filter { it.fromUser == fromUser }.map { it.toUser }
+fun List<PersistedUserPair>.loadFromUsers(toUser: Int): List<Int> = filter { it.toUser == toUser }.map { it.fromUser }
 
 class TestUserStore : UserStore {
     public var disposed: Boolean = false
@@ -13,6 +14,7 @@ class TestUserStore : UserStore {
     private val subscriptions = arrayListOf<PersistedUserPair>()
     private val blocks = arrayListOf<PersistedUserPair>()
     private val admins = arrayListOf<PersistedUserPair>()
+    private val subscriptionRequests = arrayListOf<PersistedUserPair>()
 
     override fun createFeed(data: FeedData): Int {
         val user = PersistedUser(lastId++, data)
@@ -55,6 +57,18 @@ class TestUserStore : UserStore {
     }
 
     override fun loadAdmins(groupId: Int): List<Int> = admins.loadToUsers(groupId)
+
+    override fun createSubscriptionRequest(fromUserId: Int, toUserId: Int) {
+        subscriptionRequests.add(PersistedUserPair(fromUserId, toUserId))
+    }
+
+    override fun removeSubscriptionRequest(fromUserId: Int, toUserId: Int) {
+        subscriptionRequests.remove(PersistedUserPair(fromUserId, toUserId))
+    }
+
+    override fun loadSubscriptionRequests(targetUser: Int): List<Int> {
+        return subscriptionRequests.loadFromUsers(targetUser)
+    }
 }
 
 data class PersistedPost(val id: Int, val data: PostData)
