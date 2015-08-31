@@ -31,6 +31,12 @@ class UserController(val feeds: Feeds, val authenticator: Authenticator) {
         requestingUser.subscribeTo(targetFeed)
         return ObjectListResponse().withRootObject(requestingUser, myProfileSerializer)
     }
+
+    public fun unsubscribe(requestingUser: User, targetUserName: String): ObjectListResponse {
+        val targetFeed = feeds.users.getByUserName(targetUserName)
+        requestingUser.unsubscribeFrom(targetFeed)
+        return ObjectListResponse().withRootObject(requestingUser, myProfileSerializer)
+    }
 }
 
 object UserSerializer : ObjectSerializer<Feed>() {
